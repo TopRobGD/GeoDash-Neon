@@ -308,8 +308,14 @@
         <div class="glass-panel rounded-3xl p-6 sm:p-8 max-w-4xl w-full border border-white/15 my-auto">
             <!-- Logotyp & Rubrik -->
             <div class="text-center mb-5">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-bold tracking-widest uppercase mb-2">
-                    <span>⚡ Rytm &amp; Reflexer</span>
+                <div class="inline-flex items-center gap-2.5 mb-2">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-bold tracking-widest uppercase">
+                        <span>⚡ Rytm &amp; Reflexer</span>
+                    </div>
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/45 text-amber-300 text-xs font-display font-black tracking-wider shadow-lg shadow-amber-500/10" title="Totalt antal insamlade stjärnor">
+                        <span>⭐</span>
+                        <span id="menuTotalStars">0</span>
+                    </div>
                 </div>
                 <h1 class="font-display font-black text-3xl sm:text-5xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-sky-400 to-fuchsia-400 title-glow">
                     GEODASH NEON
@@ -344,16 +350,30 @@
                         <!-- Fylls dynamiskt av JS -->
                     </div>
 
+                    <!-- ⭐ Rated / Featured Banor (Utvalda & stjärnmärkta banor som alla kan köra direkt) -->
+                    <div class="mt-2 pt-3 border-t border-amber-400/20">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-display font-bold text-xs uppercase tracking-widest text-amber-300 flex items-center gap-1.5">
+                                <span>⭐ Rated Banor (Featured)</span>
+                                <span id="ratedCountBadge" class="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 border border-amber-400/40 text-amber-200">0</span>
+                            </h3>
+                            <span class="text-[10px] text-amber-200/75">Utvalda toppbanor</span>
+                        </div>
+                        <div id="ratedLevelList" class="flex flex-col gap-2 max-h-[22vh] overflow-y-auto pr-1 custom-scroll">
+                            <div class="text-xs text-slate-400 italic py-1.5">Inga ratade banor ännu. Ge en bana stjärnor (⭐) för att lyfta upp den hit!</div>
+                        </div>
+                    </div>
+
                     <!-- Community / Publicerade Banor -->
                     <div class="mt-2 pt-3 border-t border-white/10">
                         <div class="flex items-center justify-between mb-2">
                             <h3 class="font-display font-bold text-xs uppercase tracking-widest text-fuchsia-300 flex items-center gap-1.5">
-                                <span>🌐 Publicerade Banor</span>
+                                <span>🌐 Alla Publicerade Banor</span>
                                 <span id="communityCountBadge" class="px-2 py-0.5 rounded-full text-[10px] bg-fuchsia-500/20 border border-fuchsia-400/30 text-fuchsia-200">0</span>
                             </h3>
                             <span id="onlineStatusLabel" class="text-[10px] text-slate-400">Ansluter...</span>
                         </div>
-                        <div id="communityLevelList" class="flex flex-col gap-2 max-h-[24vh] overflow-y-auto pr-1 custom-scroll">
+                        <div id="communityLevelList" class="flex flex-col gap-2 max-h-[22vh] overflow-y-auto pr-1 custom-scroll">
                             <div class="text-xs text-slate-400 italic py-2">Laddar publicerade banor...</div>
                         </div>
                     </div>
@@ -405,13 +425,13 @@
                             </div>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-pink-300 mb-1.5">Ship-utseende</label>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Ship-utseende</label>
                             <div id="shipSkinSelector" class="grid grid-cols-4 gap-1.5">
                                 <!-- Fylls av JS -->
                             </div>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-cyan-300 mb-1.5">Wave-utseende</label>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Wave-utseende</label>
                             <div id="waveSkinSelector" class="grid grid-cols-4 gap-1.5">
                                 <!-- Fylls av JS -->
                             </div>
@@ -472,7 +492,7 @@
             </h2>
             <p id="victoryLevelName" class="text-slate-300 font-semibold text-sm mb-5">Nivå 1: StereoStart</p>
 
-            <div class="grid grid-cols-2 gap-3 bg-slate-900/80 rounded-2xl p-4 mb-6 border border-white/10">
+            <div class="grid grid-cols-3 gap-2.5 bg-slate-900/80 rounded-2xl p-4 mb-6 border border-white/10">
                 <div>
                     <div class="text-xs text-slate-400 uppercase font-semibold">Försök</div>
                     <div id="victoryAttempts" class="font-display font-black text-xl text-cyan-300">1</div>
@@ -481,15 +501,63 @@
                     <div class="text-xs text-slate-400 uppercase font-semibold">Framsteg</div>
                     <div class="font-display font-black text-xl text-emerald-400">100%</div>
                 </div>
+                <div>
+                    <div class="text-xs text-slate-400 uppercase font-semibold">Stjärnor</div>
+                    <div id="victoryStarsEarned" class="font-display font-black text-xl text-amber-300">+0⭐</div>
+                </div>
             </div>
 
-            <div class="flex flex-col sm:flex-row gap-3">
-                <button id="victoryReplayBtn" class="neon-btn flex-1 py-3.5 rounded-2xl font-display font-bold text-white bg-white/10 hover:bg-white/15 border border-white/15 cursor-pointer">
+            <div class="flex flex-col sm:flex-row gap-2.5">
+                <button id="victoryReplayBtn" class="neon-btn flex-1 py-3.5 rounded-2xl font-display font-bold text-white bg-white/10 hover:bg-white/15 border border-white/15 cursor-pointer text-xs sm:text-sm">
                     ↻ SPELA IGEN
                 </button>
-                <button id="victoryNextBtn" class="neon-btn flex-1 py-3.5 rounded-2xl font-display font-bold text-slate-950 bg-gradient-to-r from-emerald-300 to-cyan-300 cursor-pointer">
+                <button id="victoryRateBtn" class="hidden neon-btn flex-1 py-3.5 rounded-2xl font-display font-bold text-amber-950 bg-gradient-to-r from-amber-300 to-yellow-400 cursor-pointer shadow-lg shadow-amber-500/25 text-xs sm:text-sm">
+                    ⭐ RATE BANA
+                </button>
+                <button id="victoryNextBtn" class="neon-btn flex-1 py-3.5 rounded-2xl font-display font-bold text-slate-950 bg-gradient-to-r from-emerald-300 to-cyan-300 cursor-pointer text-xs sm:text-sm">
                     NÄSTA BANA ▶
                 </button>
+            </div>
+            <button id="victoryMenuBtn" class="neon-btn w-full mt-2.5 py-2.5 rounded-2xl font-display font-bold text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer text-xs">
+                ⌂ HUVUDMENY
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal för att Ratea en bana (ge stjärnor 1-10⭐) -->
+    <div id="rateModal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="glass-panel rounded-3xl p-6 max-w-md w-full border border-amber-400/35 shadow-2xl shadow-amber-500/15">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="font-display font-black text-xl text-amber-300 flex items-center gap-2">
+                    <span>⭐ RATEA BANA</span>
+                </h3>
+                <span id="rateLevelTitle" class="text-xs font-bold text-slate-300 truncate max-w-[180px]">Bannamn</span>
+            </div>
+            <p class="text-xs text-slate-300 mb-4">Välj antal stjärnor (1–10⭐). När du ratear banan flyttas den automatiskt till listan <strong>⭐ Rated Banor (Featured)</strong> så att alla kan spela den direkt!</p>
+
+            <!-- Admin-lösenordsskydd för rate -->
+            <div id="ratePasswordGate" class="mb-4 p-3.5 rounded-2xl bg-slate-900/90 border border-amber-400/30">
+                <label class="block text-xs font-display font-bold text-amber-200 mb-1.5">🔒 ADMIN-LÖSENORD KRÄVS</label>
+                <div class="flex gap-2">
+                    <input id="ratePasswordInput" type="password" placeholder="Skriv lösenord..." class="flex-1 bg-slate-950/90 text-white text-xs rounded-xl px-3 py-2 border border-white/15 focus:outline-none focus:border-amber-400">
+                    <button id="unlockRateBtn" class="neon-btn rounded-xl px-4 py-2 text-xs font-display font-black bg-gradient-to-r from-amber-300 to-yellow-400 text-slate-950 cursor-pointer">LÅS UPP</button>
+                </div>
+                <p id="ratePasswordError" class="hidden text-[11px] text-rose-400 font-semibold mt-1.5">❌ Fel lösenord! Endast skaparen kan ratea banor.</p>
+            </div>
+
+            <div id="rateControlsContainer" class="hidden">
+                <div id="starButtonsGrid" class="grid grid-cols-5 gap-2 mb-5">
+                    <!-- Fylls dynamiskt med 1–10 stjärnor -->
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2 justify-between items-center">
+                <button id="unrateLevelBtn" class="hidden neon-btn rounded-xl px-3.5 py-2 text-xs font-display font-bold bg-rose-500/20 text-rose-300 border border-rose-400/35 cursor-pointer">
+                    TA BORT RATE
+                </button>
+                <div class="flex gap-2 ml-auto">
+                    <button id="closeRateModalBtn" class="neon-btn rounded-xl px-4 py-2 text-xs font-display font-bold bg-white/10 text-slate-200 border border-white/15 cursor-pointer">AVBRYT</button>
+                </div>
             </div>
         </div>
     </div>
@@ -603,6 +671,8 @@
                     authorId: currentCloudUser.uid,
                     authorShort: 'Spelare-' + currentCloudUser.uid.slice(0, 4).toUpperCase(),
                     plays: 0,
+                    rated: Boolean(levelObj.rated),
+                    stars: Number(levelObj.stars) || 0,
                     publishedAt: Date.now()
                 };
                 const ref = doc(cloudDb, 'artifacts', appId, 'public', 'data', 'published_levels', docId);
@@ -615,6 +685,46 @@
                 if (typeof window.showToast === 'function') {
                     window.showToast('Kunde inte publicera banan just nu.');
                 }
+            }
+        };
+
+        window.rateCommunityLevel = async function(docId, stars) {
+            const starCount = Math.max(0, Math.min(10, Number(stars) || 0));
+            const isRated = starCount > 0;
+
+            // Uppdatera lokalt omedelbart så UI:t reagerar direkt även i offline-läge
+            if (Array.isArray(window.communityLevels)) {
+                const localTarget = window.communityLevels.find(l => l.id === docId);
+                if (localTarget) {
+                    localTarget.rated = isRated;
+                    localTarget.stars = starCount;
+                }
+            }
+            if (typeof window.saveLocalRating === 'function') {
+                window.saveLocalRating(docId, starCount);
+            }
+            if (typeof window.renderCommunityLevels === 'function') {
+                window.renderCommunityLevels();
+            }
+
+            if (!cloudDb || !currentCloudUser || !docId) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast(isRated ? `⭐ Ratade banan med ${starCount}⭐!` : 'Tog bort rate från banan.');
+                }
+                return;
+            }
+            try {
+                const ref = doc(cloudDb, 'artifacts', appId, 'public', 'data', 'published_levels', docId);
+                await updateDoc(ref, {
+                    rated: isRated,
+                    stars: starCount,
+                    ratedAt: isRated ? Date.now() : 0
+                });
+                if (typeof window.showToast === 'function') {
+                    window.showToast(isRated ? `⭐ Banan är nu Featured med ${starCount}⭐!` : 'Tog bort rate från banan.');
+                }
+            } catch (err) {
+                console.warn('Kunde inte spara rate i molnet:', err);
             }
         };
 
@@ -1206,12 +1316,19 @@
         function buildLevel5() {
             const objs = [
                 { type: 'portal_wave', x: 14, y: 0 },
+                // Wave-korridor 1 med både golv- och takväggar så man inte kan flyga över
                 { type: 'block', x: 26, y: 0, w: 6, h: 2 },
-                { type: 'block', x: 38, y: 5, w: 6, h: 4 },
+                { type: 'block', x: 26, y: 6, w: 6, h: 5 },
+                { type: 'block', x: 38, y: 5, w: 6, h: 6 },
+                { type: 'block', x: 38, y: 0, w: 6, h: 1 },
                 { type: 'block', x: 50, y: 0, w: 6, h: 3 },
-                { type: 'block', x: 62, y: 6, w: 6, h: 3 },
+                { type: 'block', x: 50, y: 7, w: 6, h: 4 },
+                { type: 'block', x: 62, y: 6, w: 6, h: 5 },
+                { type: 'block', x: 62, y: 0, w: 6, h: 2 },
                 { type: 'block', x: 74, y: 0, w: 6, h: 3 },
-                { type: 'block', x: 86, y: 5, w: 6, h: 4 },
+                { type: 'block', x: 74, y: 7, w: 6, h: 4 },
+                { type: 'block', x: 86, y: 5, w: 6, h: 6 },
+                { type: 'block', x: 86, y: 0, w: 6, h: 1 },
                 { type: 'portal_cube', x: 98, y: 0 },
 
                 { type: 'spike', x: 108, y: 0 },
@@ -1224,10 +1341,14 @@
                 { type: 'spike', x: 147, y: 0 },
                 { type: 'spike', x: 148, y: 0 },
 
+                // Wave-korridor 2 med stängda tak- och golvblock
                 { type: 'portal_wave', x: 158, y: 0 },
                 { type: 'block', x: 170, y: 0, w: 5, h: 3 },
-                { type: 'block', x: 182, y: 5, w: 5, h: 4 },
+                { type: 'block', x: 170, y: 7, w: 5, h: 4 },
+                { type: 'block', x: 182, y: 5, w: 5, h: 6 },
+                { type: 'block', x: 182, y: 0, w: 5, h: 1 },
                 { type: 'block', x: 194, y: 0, w: 5, h: 3 },
+                { type: 'block', x: 194, y: 7, w: 5, h: 4 },
                 { type: 'portal_cube', x: 206, y: 0 },
                 { type: 'spike', x: 216, y: 0 },
                 { type: 'spike', x: 217, y: 0 }
@@ -1277,6 +1398,7 @@
                 id: 'level_1',
                 name: 'Nivå 1: StereoStart',
                 difficulty: 'Lätt',
+                stars: 2,
                 diffColor: 'text-emerald-300 border-emerald-400/40 bg-emerald-500/15',
                 speed: 390,
                 themeIndex: 0,
@@ -1287,6 +1409,7 @@
                 id: 'level_2',
                 name: 'Nivå 2: NeonPuls',
                 difficulty: 'Medel',
+                stars: 4,
                 diffColor: 'text-sky-300 border-sky-400/40 bg-sky-500/15',
                 speed: 440,
                 themeIndex: 1,
@@ -1297,6 +1420,7 @@
                 id: 'level_3',
                 name: 'Nivå 3: CyberVåg',
                 difficulty: 'Utmanande',
+                stars: 6,
                 diffColor: 'text-amber-300 border-amber-400/40 bg-amber-500/15',
                 speed: 475,
                 themeIndex: 3,
@@ -1307,6 +1431,7 @@
                 id: 'level_4',
                 name: 'Nivå 4: ElChock',
                 difficulty: 'Svår',
+                stars: 8,
                 diffColor: 'text-orange-300 border-orange-400/40 bg-orange-500/15',
                 speed: 505,
                 themeIndex: 2,
@@ -1317,6 +1442,7 @@
                 id: 'level_5',
                 name: 'Nivå 5: RymdVåg',
                 difficulty: 'Mycket Svår',
+                stars: 9,
                 diffColor: 'text-pink-300 border-pink-400/40 bg-pink-500/15',
                 speed: 525,
                 themeIndex: 4,
@@ -1327,6 +1453,7 @@
                 id: 'level_6',
                 name: 'Nivå 6: DemonKärna',
                 difficulty: 'Demon',
+                stars: 10,
                 diffColor: 'text-rose-300 border-rose-400/40 bg-rose-500/15',
                 speed: 550,
                 themeIndex: 2,
@@ -1337,6 +1464,7 @@
                 id: 'endless',
                 name: 'Oändligt Läge (Endless)',
                 difficulty: 'Oändlig',
+                stars: 0,
                 diffColor: 'text-cyan-300 border-cyan-400/40 bg-cyan-500/15',
                 speed: 455,
                 themeIndex: 0,
@@ -1351,11 +1479,42 @@
         let saveData = {
             bestProgress: {},
             bestEndless: 0,
+            totalStars: 0,
+            claimedStarLevels: {},
             colorIndex: 0,
             skinId: 'classic',
             shipSkinId: 'classic',
             waveSkinId: 'classic',
-            customLevels: []
+            customLevels: [],
+            localRatings: {}
+        };
+
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                saveData = { ...saveData, ...parsed };
+            }
+        } catch (e) {
+            // Ignorera lagringsfel
+        }
+
+        function persistSave() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+            } catch (e) {
+                // Ignorera lagringsfel
+            }
+        }
+
+        window.saveLocalRating = function(levelId, stars) {
+            if (!saveData.localRatings) saveData.localRatings = {};
+            if (stars > 0) {
+                saveData.localRatings[levelId] = stars;
+            } else {
+                delete saveData.localRatings[levelId];
+            }
+            persistSave();
         };
 
         try {
@@ -1688,8 +1847,17 @@
             sound.stopBgm();
             sound.playWin();
 
-            if (!gameState.practiceMode && !lvl.isEndless) {
+            if (!saveData.claimedStarLevels) saveData.claimedStarLevels = {};
+            const levelStars = Number(lvl.stars) || (saveData.localRatings && saveData.localRatings[lvl.id]) || 0;
+            let earnedNow = 0;
+
+            if (!gameState.practiceMode && !lvl.isEndless && !gameState.isTestingFromEditor) {
                 saveData.bestProgress[lvl.id] = 100;
+                if (levelStars > 0 && !saveData.claimedStarLevels[lvl.id]) {
+                    saveData.claimedStarLevels[lvl.id] = levelStars;
+                    saveData.totalStars = (Number(saveData.totalStars) || 0) + levelStars;
+                    earnedNow = levelStars;
+                }
                 persistSave();
             }
 
@@ -1697,6 +1865,31 @@
             document.getElementById('victoryTitle').textContent = gameState.practiceMode ? 'ÖVNING KLAR!' : 'BANA AVKLARAD!';
             document.getElementById('victoryLevelName').textContent = lvl.name;
             document.getElementById('victoryAttempts').textContent = gameState.attempt;
+
+            const vStarsEl = document.getElementById('victoryStarsEarned');
+            if (vStarsEl) {
+                if (earnedNow > 0) {
+                    vStarsEl.textContent = `+${earnedNow}⭐`;
+                    vStarsEl.className = 'font-display font-black text-xl text-amber-300';
+                } else if (levelStars > 0 && saveData.claimedStarLevels[lvl.id]) {
+                    vStarsEl.textContent = `Klar (${levelStars}⭐)`;
+                    vStarsEl.className = 'font-display font-bold text-sm text-amber-200/75 mt-1';
+                } else {
+                    vStarsEl.textContent = gameState.practiceMode ? 'Övning' : '0⭐';
+                    vStarsEl.className = 'font-display font-bold text-sm text-slate-400 mt-1';
+                }
+            }
+
+            const vRateBtn = document.getElementById('victoryRateBtn');
+            if (vRateBtn) {
+                if (gameState.activeCustomLevel && !gameState.isTestingFromEditor) {
+                    vRateBtn.classList.remove('hidden');
+                    vRateBtn.onclick = () => openRateModal(gameState.activeCustomLevel);
+                } else {
+                    vRateBtn.classList.add('hidden');
+                }
+            }
+
             document.getElementById('victoryModal').classList.remove('hidden');
             renderMenuLists();
         }
@@ -3022,6 +3215,11 @@
         }
 
         function renderMenuLists() {
+            const totalStarsEl = document.getElementById('menuTotalStars');
+            if (totalStarsEl) {
+                totalStarsEl.textContent = String(Number(saveData.totalStars) || 0);
+            }
+
             const listEl = document.getElementById('levelList');
             if (!listEl) return;
             listEl.innerHTML = '';
@@ -3031,14 +3229,16 @@
                 const best = lvl.isEndless
                     ? `${saveData.bestEndless || 0} m`
                     : `${saveData.bestProgress[lvl.id] || 0}%`;
+                const claimed = saveData.claimedStarLevels && saveData.claimedStarLevels[lvl.id];
 
                 const card = document.createElement('div');
                 card.className = 'glass-panel rounded-2xl p-3.5 border border-white/10 hover:border-cyan-400/50 transition-all flex items-center justify-between gap-3 cursor-pointer';
                 card.innerHTML = `
                     <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                             <span class="font-display font-bold text-sm text-white truncate">${lvl.name}</span>
                             <span class="px-2 py-0.5 rounded-md text-[10px] font-bold border ${lvl.diffColor}">${lvl.difficulty}</span>
+                            ${lvl.stars > 0 ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-display font-bold border ${claimed ? 'bg-amber-400 text-slate-950 border-amber-300' : 'bg-amber-500/15 text-amber-300 border-amber-400/35'}">${lvl.stars}⭐${claimed ? ' ✓' : ''}</span>` : ''}
                         </div>
                         <div class="mt-1.5 flex items-center gap-2">
                             <div class="flex-1 h-1.5 bg-slate-900 rounded-full overflow-hidden max-w-[160px]">
@@ -3061,55 +3261,239 @@
                 listEl.appendChild(header);
 
                 saveData.customLevels.forEach(cl => {
+                    const localStars = (saveData.localRatings && saveData.localRatings[cl.id]) || cl.stars || 0;
                     const card = document.createElement('div');
                     card.className = 'glass-panel rounded-2xl p-3 border border-amber-400/25 flex items-center justify-between gap-2';
                     card.innerHTML = `
                         <div class="min-w-0 flex-1">
-                            <div class="font-display font-bold text-xs sm:text-sm text-amber-200 truncate">${cl.name}</div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-display font-bold text-xs sm:text-sm text-amber-200 truncate">${cl.name}</span>
+                                ${localStars > 0 ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-display font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40">${localStars}⭐</span>` : ''}
+                            </div>
                             <div class="text-[11px] text-slate-400">Rekord: ${saveData.bestProgress[cl.id] || 0}%</div>
                         </div>
                         <div class="flex items-center gap-1.5">
+                            <button class="rate-custom-btn neon-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-400/35 cursor-pointer" title="Ratea bana">⭐</button>
                             <button class="edit-custom-btn neon-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white/10 text-slate-200 border border-white/15 cursor-pointer" title="Redigera">✏️</button>
                             <button class="del-custom-btn neon-btn px-2.5 py-1.5 rounded-lg text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-400/30 cursor-pointer" title="Ta bort">🗑️</button>
                             <button class="play-custom-btn neon-btn px-3 py-1.5 rounded-lg text-xs font-display font-black bg-amber-400 text-slate-950 cursor-pointer">▶</button>
                         </div>
                     `;
                     card.querySelector('.play-custom-btn').addEventListener('click', () => startLevel(0, cl, false));
+                    card.querySelector('.rate-custom-btn').addEventListener('click', () => openRateModal(cl, true));
                     card.querySelector('.edit-custom-btn').addEventListener('click', () => openEditor(cl));
                     card.querySelector('.del-custom-btn').addEventListener('click', () => {
                         saveData.customLevels = saveData.customLevels.filter(item => item.id !== cl.id);
                         persistSave();
                         renderMenuLists();
+                        window.renderCommunityLevels();
                         showToast('Bana borttagen');
                     });
                     listEl.appendChild(card);
                 });
             }
+            window.renderCommunityLevels();
         }
+
+        let currentLevelToRate = null;
+        let currentRateIsLocalCustom = false;
+
+        // Byt gärna ut detta lösenord till ditt eget hemliga lösenord innan du laddar upp till GitHub!
+        const RATE_ADMIN_PASSWORD = "TopRobAdmin";
+        let isRateAdminUnlocked = false;
+
+        function updateRateModalLockState() {
+            const gate = document.getElementById('ratePasswordGate');
+            const controls = document.getElementById('rateControlsContainer');
+            const unrateBtn = document.getElementById('unrateLevelBtn');
+            const errEl = document.getElementById('ratePasswordError');
+
+            if (errEl) errEl.classList.add('hidden');
+
+            if (isRateAdminUnlocked) {
+                gate.classList.add('hidden');
+                controls.classList.remove('hidden');
+                const currentStars = currentLevelToRate
+                    ? (Number(currentLevelToRate.stars) || (saveData.localRatings && saveData.localRatings[currentLevelToRate.id]) || 0)
+                    : 0;
+                if (currentStars > 0) {
+                    unrateBtn.classList.remove('hidden');
+                } else {
+                    unrateBtn.classList.add('hidden');
+                }
+            } else {
+                gate.classList.remove('hidden');
+                controls.classList.add('hidden');
+                unrateBtn.classList.add('hidden');
+                const input = document.getElementById('ratePasswordInput');
+                if (input) {
+                    input.value = '';
+                    setTimeout(() => input.focus(), 50);
+                }
+            }
+        }
+
+        function tryUnlockRateAdmin() {
+            const input = document.getElementById('ratePasswordInput');
+            const errEl = document.getElementById('ratePasswordError');
+            if (!input) return;
+
+            if (input.value === RATE_ADMIN_PASSWORD) {
+                isRateAdminUnlocked = true;
+                updateRateModalLockState();
+                showToast('🔓 Admin-läge upplåst!');
+            } else {
+                if (errEl) errEl.classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('unlockRateBtn').addEventListener('click', tryUnlockRateAdmin);
+        document.getElementById('ratePasswordInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                tryUnlockRateAdmin();
+            }
+        });
+
+        function openRateModal(levelObj, isLocalCustom = false) {
+            currentLevelToRate = levelObj;
+            currentRateIsLocalCustom = isLocalCustom;
+            document.getElementById('rateLevelTitle').textContent = levelObj.name || 'Bana';
+
+            const currentStars = Number(levelObj.stars) || (saveData.localRatings && saveData.localRatings[levelObj.id]) || 0;
+
+            const grid = document.getElementById('starButtonsGrid');
+            grid.innerHTML = '';
+            for (let s = 1; s <= 10; s++) {
+                const btn = document.createElement('button');
+                const isSelected = currentStars === s;
+                btn.className = `neon-btn py-2.5 rounded-xl font-display font-black text-xs sm:text-sm border cursor-pointer flex flex-col items-center justify-center gap-0.5 ${isSelected ? 'bg-amber-400 text-slate-950 border-white shadow-lg shadow-amber-400/40' : 'bg-amber-500/15 text-amber-200 border-amber-400/35 hover:bg-amber-500/30'}`;
+                btn.innerHTML = `<span>${s}⭐</span>`;
+                btn.addEventListener('click', () => {
+                    applyRatingToLevel(s);
+                });
+                grid.appendChild(btn);
+            }
+
+            updateRateModalLockState();
+            document.getElementById('rateModal').classList.remove('hidden');
+        }
+
+        function applyRatingToLevel(stars) {
+            if (!isRateAdminUnlocked || !currentLevelToRate) return;
+            const target = currentLevelToRate;
+            target.rated = stars > 0;
+            target.stars = stars;
+
+            if (currentRateIsLocalCustom) {
+                const idx = saveData.customLevels.findIndex(item => item.id === target.id);
+                if (idx >= 0) {
+                    saveData.customLevels[idx].rated = stars > 0;
+                    saveData.customLevels[idx].stars = stars;
+                }
+                window.saveLocalRating(target.id, stars);
+                persistSave();
+                renderMenuLists();
+                showToast(stars > 0 ? `⭐ "${target.name}" är nu Featured med ${stars}⭐!` : 'Tog bort rate.');
+            } else if (typeof window.rateCommunityLevel === 'function') {
+                window.rateCommunityLevel(target.id, stars);
+            }
+
+            document.getElementById('rateModal').classList.add('hidden');
+        }
+
+        document.getElementById('closeRateModalBtn').addEventListener('click', () => {
+            document.getElementById('rateModal').classList.add('hidden');
+        });
+        document.getElementById('unrateLevelBtn').addEventListener('click', () => {
+            applyRatingToLevel(0);
+        });
 
         window.renderCommunityLevels = function() {
             const container = document.getElementById('communityLevelList');
             const badge = document.getElementById('communityCountBadge');
+            const ratedContainer = document.getElementById('ratedLevelList');
+            const ratedBadge = document.getElementById('ratedCountBadge');
             if (!container) return;
 
-            const levels = window.communityLevels || [];
-            if (badge) badge.textContent = String(levels.length);
+            const cloudLevels = window.communityLevels || [];
+            // Slå ihop molnbanor och lokalt ratade banor så listan alltid fungerar direkt
+            const localRated = (saveData.customLevels || [])
+                .filter(cl => cl.rated || (saveData.localRatings && saveData.localRatings[cl.id] > 0))
+                .map(cl => ({
+                    ...cl,
+                    rated: true,
+                    stars: cl.stars || saveData.localRatings[cl.id] || 5,
+                    authorShort: 'Du (Lokal)',
+                    isLocalOnly: true
+                }));
 
-            if (levels.length === 0) {
-                container.innerHTML = '<div class="text-xs text-slate-400 italic py-1.5">Inga publicerade banor ännu. Bygg en bana och klicka på 🌐 PUBLICERA!</div>';
+            const ratedMap = new Map();
+            cloudLevels.filter(cl => cl.rated && (cl.stars || 0) > 0).forEach(cl => ratedMap.set(cl.id, cl));
+            localRated.forEach(cl => {
+                if (!ratedMap.has(cl.id)) ratedMap.set(cl.id, cl);
+            });
+            const ratedLevels = Array.from(ratedMap.values()).sort((a, b) => (b.stars || 0) - (a.stars || 0));
+
+            if (ratedBadge) ratedBadge.textContent = String(ratedLevels.length);
+            if (ratedContainer) {
+                if (ratedLevels.length === 0) {
+                    ratedContainer.innerHTML = '<div class="text-xs text-slate-400 italic py-1.5">Inga ratade banor ännu. Klicka på ⭐ bredvid en bana för att lyfta upp den hit!</div>';
+                } else {
+                    ratedContainer.innerHTML = '';
+                    ratedLevels.forEach(cl => {
+                        const bestPct = saveData.bestProgress[cl.id] || 0;
+                        const claimed = saveData.claimedStarLevels && saveData.claimedStarLevels[cl.id];
+                        const card = document.createElement('div');
+                        card.className = 'glass-panel rounded-xl p-2.5 border border-amber-400/40 bg-gradient-to-r from-amber-500/10 to-yellow-500/5 flex items-center justify-between gap-2';
+                        card.innerHTML = `
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="px-1.5 py-0.5 rounded-md text-[10px] font-display font-black bg-amber-400 text-slate-950">${cl.stars}⭐${claimed ? ' ✓' : ''}</span>
+                                    <span class="font-display font-bold text-xs text-amber-100 truncate">${cl.name}</span>
+                                </div>
+                                <div class="text-[10px] text-amber-200/75 mt-0.5">av ${cl.authorShort || 'Spelare'} • Rekord: ${bestPct}%</div>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <button class="rate-feat-btn neon-btn px-2 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-400/40 cursor-pointer" title="Ändra stjärnor">⭐</button>
+                                <button class="play-feat-btn neon-btn px-3 py-1.5 rounded-lg text-xs font-display font-black bg-gradient-to-r from-amber-300 to-yellow-400 text-slate-950 cursor-pointer shadow">▶</button>
+                            </div>
+                        `;
+                        card.querySelector('.play-feat-btn').addEventListener('click', () => {
+                            if (!cl.isLocalOnly && typeof window.incrementCommunityPlays === 'function') {
+                                window.incrementCommunityPlays(cl.id);
+                            }
+                            startLevel(0, cl, false);
+                        });
+                        card.querySelector('.rate-feat-btn').addEventListener('click', () => openRateModal(cl, Boolean(cl.isLocalOnly)));
+                        ratedContainer.appendChild(card);
+                    });
+                }
+            }
+
+            if (badge) badge.textContent = String(cloudLevels.length);
+
+            if (cloudLevels.length === 0) {
+                container.innerHTML = '<div class="text-xs text-slate-400 italic py-1.5">Inga publicerade banor i molnet ännu. Bygg en bana och klicka på 🌐 PUBLICERA!</div>';
                 return;
             }
 
             container.innerHTML = '';
-            levels.forEach(cl => {
+            cloudLevels.forEach(cl => {
                 const card = document.createElement('div');
                 card.className = 'glass-panel rounded-xl p-2.5 border border-fuchsia-400/25 flex items-center justify-between gap-2';
                 card.innerHTML = `
                     <div class="min-w-0 flex-1">
-                        <div class="font-display font-bold text-xs text-fuchsia-200 truncate">${cl.name}</div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-display font-bold text-xs text-fuchsia-200 truncate">${cl.name}</span>
+                            ${cl.rated && cl.stars ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-display font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40">${cl.stars}⭐</span>` : ''}
+                        </div>
                         <div class="text-[10px] text-slate-400">av ${cl.authorShort || 'Spelare'} • ${cl.plays || 0} spelningar</div>
                     </div>
-                    <button class="play-comm-btn neon-btn px-3 py-1.5 rounded-lg text-xs font-display font-black bg-fuchsia-500 text-white cursor-pointer">▶</button>
+                    <div class="flex items-center gap-1.5">
+                        <button class="rate-comm-btn neon-btn px-2 py-1.5 rounded-lg text-xs font-bold bg-amber-500/15 text-amber-300 border border-amber-400/35 cursor-pointer" title="Ratea denna bana">⭐</button>
+                        <button class="play-comm-btn neon-btn px-3 py-1.5 rounded-lg text-xs font-display font-black bg-fuchsia-500 text-white cursor-pointer">▶</button>
+                    </div>
                 `;
                 card.querySelector('.play-comm-btn').addEventListener('click', () => {
                     if (typeof window.incrementCommunityPlays === 'function') {
@@ -3117,6 +3501,7 @@
                     }
                     startLevel(0, cl, false);
                 });
+                card.querySelector('.rate-comm-btn').addEventListener('click', () => openRateModal(cl, false));
                 container.appendChild(card);
             });
         };
@@ -3243,6 +3628,11 @@
             }
             const nextIdx = (gameState.currentLevelIndex + 1) % LEVELS.length;
             startLevel(nextIdx, null, false);
+        });
+
+        document.getElementById('victoryMenuBtn').addEventListener('click', () => {
+            document.getElementById('victoryModal').classList.add('hidden');
+            returnToMainMenu();
         });
 
         // Editor-knappar & reglage
