@@ -298,10 +298,14 @@
                 <div class="lg:col-span-7 flex flex-col gap-3">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <h2 class="font-display font-bold text-xs uppercase tracking-widest text-slate-400">Välj Bana</h2>
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2">
                             <!-- Knapp för Banskappare -->
                             <button id="openEditorBtn" class="neon-btn rounded-xl px-3 py-1.5 text-xs font-display font-bold bg-gradient-to-r from-amber-400/20 to-orange-500/20 text-amber-300 border border-amber-400/40 cursor-pointer">
                                 🛠️ BYGG EGEN BANA
+                            </button>
+                            <!-- Knapp för att ladda bankod direkt från huvudmenyn -->
+                            <button id="menuImportCodeBtn" class="neon-btn rounded-xl px-3 py-1.5 text-xs font-display font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-400/35 cursor-pointer">
+                                📥 LADDA BANKOD
                             </button>
                             <!-- Toggle för Övningsläge -->
                             <button id="practiceModeToggle" class="neon-btn rounded-xl px-3 py-1.5 text-xs font-display font-bold flex items-center gap-1.5 border border-white/15 bg-white/5 text-slate-300 cursor-pointer">
@@ -1606,6 +1610,7 @@
             gameState.flashAlpha = 0.35;
             const c = CUBE_COLORS[saveData.colorIndex];
             spawnParticles(player.x + player.size / 2, player.y + player.size / 2, c.primary, 28, 380);
+            sound.stopBgm();
             sound.playCrash();
         }
 
@@ -1793,6 +1798,7 @@
                 if (gameState.deadTimer <= 0) {
                     gameState.attempt++;
                     resetAttempt(false);
+                    sound.startBgm();
                 }
                 return;
             }
@@ -1860,16 +1866,20 @@
                 player.y = groundY - player.size;
                 player.vy = 0;
                 player.grounded = true;
+                if (player.mode === 'WAVE') player.rotation = 0;
             } else if (player.gravityDir === -1 && player.y <= ceilingY) {
                 player.y = ceilingY;
                 player.vy = 0;
                 player.grounded = true;
+                if (player.mode === 'WAVE') player.rotation = 0;
             } else if (player.y < ceilingY && player.mode !== 'CUBE') {
                 player.y = ceilingY;
                 player.vy = 0;
+                if (player.mode === 'WAVE') player.rotation = 0;
             } else if (player.y + player.size > groundY) {
                 player.y = groundY - player.size;
                 player.vy = 0;
+                if (player.mode === 'WAVE') player.rotation = 0;
             }
 
             // Objektkollisioner (Block, Spikar, Pads, Portaler)
@@ -1950,6 +1960,9 @@
                             player.mode = newMode;
                             if (newMode === 'CUBE') {
                                 player.gravityDir = 1;
+                                // Förhindra oavsiktligt hopp om man höll inne knappen i Ship/Wave precis före portalen
+                                gameState.inputHeld = false;
+                                gameState.jumpBuffered = false;
                             }
                             gameState.waveTrail = [];
                             updateModeBadge();
@@ -2745,6 +2758,12 @@
         // --- KOPPLA KNAPPAR ---
         document.getElementById('quickPlayBtn').addEventListener('click', () => startLevel(0, null, false));
         document.getElementById('openEditorBtn').addEventListener('click', () => openEditor(null));
+        document.getElementById('menuImportCodeBtn').addEventListener('click', () => {
+            document.getElementById('shareCodeTextarea').value = '';
+            document.getElementById('copyShareCodeBtn').classList.add('hidden');
+            document.getElementById('shareModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('shareCodeTextarea').focus(), 50);
+        });
         document.getElementById('practiceModeToggle').addEventListener('click', togglePracticeMode);
 
         document.getElementById('muteToggleBtn').addEventListener('click', () => {
@@ -2833,6 +2852,7 @@
             const payload = buildEditorLevelPayload();
             const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
             document.getElementById('shareCodeTextarea').value = encoded;
+            document.getElementById('copyShareCodeBtn').classList.remove('hidden');
             document.getElementById('shareModal').classList.remove('hidden');
         });
 
@@ -2853,9 +2873,23 @@
                 const decoded = JSON.parse(decodeURIComponent(escape(atob(raw))));
                 if (!decoded || !Array.isArray(decoded.objects)) throw new Error('Ogiltig kod');
                 decoded.id = 'custom_' + Date.now();
-                openEditor(decoded);
+                decoded.name = String(decoded.name || 'Importerad Bana').slice(0, 24);
+                decoded.difficulty = 'Egen Bana';
+                decoded.diffColor = 'text-amber-300 border-amber-400/40 bg-amber-500/15';
+
+                const fromMenu = gameState.screen === 'MENU';
                 document.getElementById('shareModal').classList.add('hidden');
-                showToast(`✅ Laddade banan "${decoded.name || 'Importerad Bana'}"!`);
+
+                if (fromMenu) {
+                    saveData.customLevels.push(decoded);
+                    persistSave();
+                    renderMenuLists();
+                    startLevel(0, decoded, false);
+                    showToast(`▶️ Startar "${decoded.name}" (även sparad under Mina Sparade Banor)!`);
+                } else {
+                    openEditor(decoded);
+                    showToast(`✅ Laddade banan "${decoded.name}" i editorn!`);
+                }
             } catch (err) {
                 showToast('❌ Ogiltig bankod – kontrollera att du kopierat hela texten.');
             }
