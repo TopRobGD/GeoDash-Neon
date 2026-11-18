@@ -205,6 +205,11 @@
                     <input id="editorScrollYSlider" type="range" min="-4" max="20" value="2" class="w-24 sm:w-32 accent-pink-400 cursor-pointer">
                     <span id="editorCoordYReadout" class="text-xs font-display font-bold text-pink-300 w-12 text-right">Y: 2</span>
                 </div>
+                <div class="w-px h-4 bg-white/15 hidden sm:block"></div>
+                <button id="editorRotateBtn" class="neon-btn rounded-lg px-2.5 py-1 text-xs font-display font-bold bg-indigo-500/25 text-indigo-200 border border-indigo-400/40 cursor-pointer flex items-center gap-1" title="Rotera objekt 90 grader (Tangent R)">
+                    <span>↻ ROTERA (R):</span>
+                    <span id="editorRotationReadout" class="text-cyan-300">0°</span>
+                </button>
             </div>
 
             <!-- Verktygspalett -->
@@ -252,6 +257,26 @@
                 <button data-tool="portal_wave" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer">
                     <span class="text-cyan-300 text-sm leading-none">❖</span>
                     <span>WAVE (9)</span>
+                </button>
+                <button data-tool="deco_pillar" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer" title="Dekoration utan kollision">
+                    <span class="text-indigo-300 text-sm leading-none">▮</span>
+                    <span>PELARE</span>
+                </button>
+                <button data-tool="deco_grid" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer" title="Bakgrundsruta utan kollision">
+                    <span class="text-purple-300 text-sm leading-none">❖</span>
+                    <span>NEONRUTA</span>
+                </button>
+                <button data-tool="deco_crystal" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer" title="Kristalldekoration utan kollision">
+                    <span class="text-teal-300 text-sm leading-none">◆</span>
+                    <span>KRISTALL</span>
+                </button>
+                <button data-tool="deco_arrow" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer" title="Neonpil utan kollision">
+                    <span class="text-amber-200 text-sm leading-none">➤</span>
+                    <span>PIL</span>
+                </button>
+                <button data-tool="rotate" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer" title="Klicka på ett utplacerat objekt för att rotera det 90°">
+                    <span class="text-indigo-300 font-black">↻</span>
+                    <span>VRID (Q)</span>
                 </button>
                 <button data-tool="erase" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer">
                     <span class="text-rose-400 font-black">✕</span>
@@ -345,9 +370,22 @@
                     </div>
 
                     <!-- Förhandsvisning av kuben -->
-                    <div class="flex items-center justify-center py-3 bg-slate-950/70 rounded-2xl border border-white/10 relative overflow-hidden">
+                    <div class="flex flex-col items-center justify-center py-3 bg-slate-950/70 rounded-2xl border border-white/10 relative overflow-hidden gap-2">
                         <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(#00f5d4 1px, transparent 1px); background-size: 14px 14px;"></div>
-                        <canvas id="previewCubeCanvas" width="96" height="96" class="w-24 h-24 relative z-10"></canvas>
+                        <div class="relative z-10 flex items-center justify-around w-full px-3">
+                            <div class="flex flex-col items-center gap-1">
+                                <canvas id="previewCubeCanvas" width="76" height="76" class="w-16 h-16 sm:w-[72px] sm:h-[72px]"></canvas>
+                                <span class="text-[10px] font-display font-bold text-slate-400">KUB</span>
+                            </div>
+                            <div class="flex flex-col items-center gap-1">
+                                <canvas id="previewShipCanvas" width="76" height="76" class="w-16 h-16 sm:w-[72px] sm:h-[72px]"></canvas>
+                                <span class="text-[10px] font-display font-bold text-pink-300">SHIP</span>
+                            </div>
+                            <div class="flex flex-col items-center gap-1">
+                                <canvas id="previewWaveCanvas" width="76" height="76" class="w-16 h-16 sm:w-[72px] sm:h-[72px]"></canvas>
+                                <span class="text-[10px] font-display font-bold text-cyan-300">WAVE</span>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Färgval -->
@@ -359,10 +397,24 @@
                     </div>
 
                     <!-- Utseende / Mönster -->
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-2">Utseende</label>
-                        <div id="skinSelector" class="grid grid-cols-4 gap-2">
-                            <!-- Fylls av JS -->
+                    <div class="flex flex-col gap-2.5">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Kub-utseende</label>
+                            <div id="skinSelector" class="grid grid-cols-4 gap-1.5">
+                                <!-- Fylls av JS -->
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-pink-300 mb-1.5">Ship-utseende</label>
+                            <div id="shipSkinSelector" class="grid grid-cols-4 gap-1.5">
+                                <!-- Fylls av JS -->
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-cyan-300 mb-1.5">Wave-utseende</label>
+                            <div id="waveSkinSelector" class="grid grid-cols-4 gap-1.5">
+                                <!-- Fylls av JS -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -943,6 +995,20 @@
             { id: 'ninja', label: 'Cyber' }
         ];
 
+        const SHIP_SKINS = [
+            { id: 'classic', label: 'Klassisk' },
+            { id: 'shark', label: 'Hajfen' },
+            { id: 'jet', label: 'Jaktplan' },
+            { id: 'dragon', label: 'Drake' }
+        ];
+
+        const WAVE_SKINS = [
+            { id: 'classic', label: 'Klassisk' },
+            { id: 'zoink', label: 'Zoink (Fat)' },
+            { id: 'needle', label: 'Nålspets' },
+            { id: 'blade', label: 'Klinga' }
+        ];
+
         // --- BANBYGGARE FÖR DE 6 HUVUDBANORNA ---
         function addPortalCeilingBlocks(objects) {
             const extra = [];
@@ -1287,6 +1353,8 @@
             bestEndless: 0,
             colorIndex: 0,
             skinId: 'classic',
+            shipSkinId: 'classic',
+            waveSkinId: 'classic',
             customLevels: []
         };
 
@@ -1333,6 +1401,7 @@
 
         const editorState = {
             tool: 'block',
+            rotation: 0, // 0, 90, 180, 270 grader
             cameraX: 0,
             cameraY: 2,
             objects: [],
@@ -1695,6 +1764,11 @@
             } else if (e.code === 'KeyX') {
                 if (gameState.screen === 'PLAYING' && !gameState.paused) removeLastCheckpoint();
             } else if (gameState.screen === 'EDITOR') {
+                if (e.code === 'KeyR') {
+                    e.preventDefault();
+                    rotateEditorPlacement();
+                    return;
+                }
                 const keyMap = {
                     Digit1: 'block',
                     Digit2: 'spike',
@@ -1705,6 +1779,7 @@
                     Digit7: 'portal_cube',
                     Digit8: 'portal_ship',
                     Digit9: 'portal_wave',
+                    KeyQ: 'rotate',
                     Digit0: 'erase'
                 };
                 if (keyMap[e.code]) setEditorTool(keyMap[e.code]);
@@ -1904,12 +1979,14 @@
                             player.y = oy - player.size;
                             player.vy = 0;
                             player.grounded = true;
+                            if (player.mode === 'WAVE') player.rotation = 0;
                         }
                         // Landning under block (inverterad gravitation)
                         else if (player.gravityDir === -1 && prevTop >= oBottom - 22 && player.y <= oBottom && player.vy <= 0) {
                             player.y = oBottom;
                             player.vy = 0;
                             player.grounded = true;
+                            if (player.mode === 'WAVE') player.rotation = 0;
                         }
                         // Sidokrasch in i blockvägg
                         else if (pBottom > oy + 8 && pTop < oBottom - 8) {
@@ -1922,33 +1999,72 @@
                         }
                     }
                 } else if (o.type === 'spike') {
-                    const sx = ox + TILE * 0.28;
-                    const sw = TILE * 0.44;
-                    const sy = groundY - (o.y + 1) * TILE + TILE * 0.25;
-                    const sh = TILE * 0.68;
+                    const rot = ((o.rot || 0) % 360 + 360) % 360;
+                    let sx = ox + TILE * 0.28;
+                    let sw = TILE * 0.44;
+                    let sy = groundY - (o.y + 1) * TILE + TILE * 0.25;
+                    let sh = TILE * 0.68;
+
+                    if (rot === 180) {
+                        // Upp-och-nervänd spik (pekar nedåt från tak/block)
+                        sy = groundY - (o.y + 1) * TILE + TILE * 0.07;
+                    } else if (rot === 90) {
+                        // Spik som pekar åt höger
+                        sx = ox + TILE * 0.07;
+                        sw = TILE * 0.68;
+                        sy = groundY - (o.y + 1) * TILE + TILE * 0.28;
+                        sh = TILE * 0.44;
+                    } else if (rot === 270) {
+                        // Spik som pekar åt vänster
+                        sx = ox + TILE * 0.25;
+                        sw = TILE * 0.68;
+                        sy = groundY - (o.y + 1) * TILE + TILE * 0.28;
+                        sh = TILE * 0.44;
+                    }
 
                     if (pRight > sx && pLeft < sx + sw && pBottom > sy && pTop < sy + sh) {
                         killPlayer();
                         return;
                     }
                 } else if (o.type === 'pad' || o.type === 'blue_pad' || o.type === 'pink_pad') {
-                    const py = groundY - o.y * TILE - 12;
-                    if (!o.triggered && pRight > ox + 4 && pLeft < ox + TILE - 4 && pBottom >= py && pTop <= groundY - o.y * TILE) {
+                    const rot = ((o.rot || 0) % 360 + 360) % 360;
+                    const cellTop = groundY - (o.y + 1) * TILE;
+                    const cellBottom = groundY - o.y * TILE;
+                    let hitPad = false;
+                    let fx = ox + TILE / 2;
+                    let fy = cellBottom - 6;
+
+                    if (rot === 180) {
+                        hitPad = pRight > ox + 4 && pLeft < ox + TILE - 4 && pTop <= cellTop + 12 && pBottom >= cellTop;
+                        fy = cellTop + 6;
+                    } else if (rot === 90) {
+                        hitPad = pRight > ox && pLeft <= ox + 12 && pBottom > cellTop + 4 && pTop < cellBottom - 4;
+                        fx = ox + 6;
+                        fy = cellTop + TILE / 2;
+                    } else if (rot === 270) {
+                        hitPad = pRight >= ox + TILE - 12 && pLeft < ox + TILE && pBottom > cellTop + 4 && pTop < cellBottom - 4;
+                        fx = ox + TILE - 6;
+                        fy = cellTop + TILE / 2;
+                    } else {
+                        hitPad = pBottom >= cellBottom - 12 && pTop <= cellBottom && pRight > ox + 4 && pLeft < ox + TILE - 4;
+                    }
+
+                    if (!o.triggered && hitPad) {
                         o.triggered = true;
                         player.grounded = false;
                         if (o.type === 'blue_pad') {
                             player.gravityDir *= -1;
                             player.vy = player.gravityDir * 260;
                             sound.playPad('blue');
-                            spawnParticles(ox + TILE / 2, py, '#38bdf8', 14, 230);
+                            spawnParticles(fx, fy, '#38bdf8', 14, 230);
                         } else if (o.type === 'pink_pad') {
                             player.vy = PINK_PAD_VELOCITY * player.gravityDir;
                             sound.playPad('pink');
-                            spawnParticles(ox + TILE / 2, py, '#f472b6', 14, 230);
+                            spawnParticles(fx, fy, '#f472b6', 14, 230);
                         } else {
                             player.vy = PAD_VELOCITY * player.gravityDir;
                             sound.playPad('yellow');
-                            spawnParticles(ox + TILE / 2, py, '#ffd166', 14, 230);
+                            spawnParticles(fx, fy, '#ffd166', 14, 230);
                         }
                     }
                 } else if (o.type === 'portal_cube' || o.type === 'portal_ship' || o.type === 'portal_wave') {
@@ -2016,6 +2132,8 @@
         function drawCubeGraphic(cCtx, cx, cy, size, rotation, mode = 'CUBE', gravityDir = 1) {
             const col = CUBE_COLORS[saveData.colorIndex] || CUBE_COLORS[0];
             const skin = saveData.skinId || 'classic';
+            const shipSkin = saveData.shipSkinId || 'classic';
+            const waveSkin = saveData.waveSkinId || 'classic';
 
             cCtx.save();
             cCtx.translate(cx, cy);
@@ -2023,26 +2141,164 @@
             if (gravityDir === -1) cCtx.scale(1, -1);
 
             if (mode === 'SHIP') {
-                // Neonskepp med kuben inuti
                 cCtx.shadowColor = col.primary;
                 cCtx.shadowBlur = 14;
-                cCtx.fillStyle = col.secondary;
                 cCtx.strokeStyle = '#ffffff';
                 cCtx.lineWidth = 2;
-                cCtx.beginPath();
-                cCtx.moveTo(-size * 0.65, size * 0.15);
-                cCtx.lineTo(size * 0.72, size * 0.15);
-                cCtx.lineTo(size * 0.35, size * 0.52);
-                cCtx.lineTo(-size * 0.45, size * 0.52);
-                cCtx.closePath();
-                cCtx.fill();
-                cCtx.stroke();
 
-                // Mini-kub som pilot
-                const mSize = size * 0.52;
+                // Mini-kub som pilot (ritas först så skeppsskrovet omsluter snyggt)
+                const mSize = size * 0.48;
                 cCtx.fillStyle = col.primary;
-                cCtx.fillRect(-mSize / 2, -mSize * 0.75, mSize, mSize);
-                cCtx.strokeRect(-mSize / 2, -mSize * 0.75, mSize, mSize);
+                cCtx.fillRect(-mSize / 2, -mSize * 0.82, mSize, mSize);
+                cCtx.strokeRect(-mSize / 2, -mSize * 0.82, mSize, mSize);
+
+                cCtx.fillStyle = col.secondary;
+                if (shipSkin === 'shark') {
+                    // Haj-skepp med ryggfena och huggtandsnos
+                    cCtx.beginPath();
+                    cCtx.moveTo(-size * 0.68, size * 0.1);
+                    cCtx.lineTo(-size * 0.48, -size * 0.34);
+                    cCtx.lineTo(-size * 0.28, size * 0.08);
+                    cCtx.lineTo(size * 0.76, size * 0.12);
+                    cCtx.lineTo(size * 0.45, size * 0.32);
+                    cCtx.lineTo(size * 0.56, size * 0.48);
+                    cCtx.lineTo(-size * 0.48, size * 0.52);
+                    cCtx.closePath();
+                    cCtx.fill();
+                    cCtx.stroke();
+                } else if (shipSkin === 'jet') {
+                    // Strömlinjeformat neon-jaktplan med dubbla vingar och jetflamma
+                    cCtx.beginPath();
+                    cCtx.moveTo(-size * 0.72, size * 0.02);
+                    cCtx.lineTo(-size * 0.25, size * 0.12);
+                    cCtx.lineTo(size * 0.8, size * 0.22);
+                    cCtx.lineTo(size * 0.25, size * 0.5);
+                    cCtx.lineTo(-size * 0.58, size * 0.5);
+                    cCtx.lineTo(-size * 0.44, size * 0.26);
+                    cCtx.closePath();
+                    cCtx.fill();
+                    cCtx.stroke();
+
+                    // Jetflamma baktill
+                    cCtx.fillStyle = col.primary;
+                    cCtx.beginPath();
+                    cCtx.moveTo(-size * 0.58, size * 0.28);
+                    cCtx.lineTo(-size * 0.85, size * 0.36);
+                    cCtx.lineTo(-size * 0.58, size * 0.44);
+                    cCtx.closePath();
+                    cCtx.fill();
+                } else if (shipSkin === 'dragon') {
+                    // Drakskepp med horn och taggig köl
+                    cCtx.beginPath();
+                    cCtx.moveTo(-size * 0.65, size * 0.12);
+                    cCtx.lineTo(size * 0.42, size * 0.12);
+                    cCtx.lineTo(size * 0.62, -size * 0.12);
+                    cCtx.lineTo(size * 0.76, size * 0.18);
+                    cCtx.lineTo(size * 0.38, size * 0.52);
+                    cCtx.lineTo(0, size * 0.42);
+                    cCtx.lineTo(-size * 0.45, size * 0.54);
+                    cCtx.closePath();
+                    cCtx.fill();
+                    cCtx.stroke();
+                } else {
+                    // Klassiskt skepp
+                    cCtx.beginPath();
+                    cCtx.moveTo(-size * 0.65, size * 0.15);
+                    cCtx.lineTo(size * 0.72, size * 0.15);
+                    cCtx.lineTo(size * 0.35, size * 0.52);
+                    cCtx.lineTo(-size * 0.45, size * 0.52);
+                    cCtx.closePath();
+                    cCtx.fill();
+                    cCtx.stroke();
+                }
+
+                cCtx.restore();
+                return;
+            }
+
+            if (mode === 'WAVE') {
+                cCtx.shadowColor = col.primary;
+                cCtx.shadowBlur = 16;
+
+                if (waveSkin === 'zoink') {
+                    // Zoinks ikoniska "fat/blunt"-wave: bred, kraftig pil med avskuren/trubbig spets och inre kärna
+                    cCtx.fillStyle = col.primary;
+                    cCtx.strokeStyle = '#ffffff';
+                    cCtx.lineWidth = 2.6;
+                    cCtx.beginPath();
+                    cCtx.moveTo(size * 0.54, -size * 0.11);
+                    cCtx.lineTo(size * 0.54, size * 0.11);
+                    cCtx.lineTo(-size * 0.42, size * 0.48);
+                    cCtx.lineTo(-size * 0.42, -size * 0.48);
+                    cCtx.closePath();
+                    cCtx.fill();
+                    cCtx.stroke();
+
+                    // Inre sekundärfärgad triangel och vit mittkärna (typiskt för Zoinks wave)
+                    cCtx.shadowBlur = 0;
+                    cCtx.fillStyle = col.secondary;
+                    cCtx.beginPath();
+                    cCtx.moveTo(size * 0.26, 0);
+                    cCtx.lineTo(-size * 0.28, size * 0.26);
+                    cCtx.lineTo(-size * 0.28, -size * 0.26);
+                    cCtx.closePath();
+                    cCtx.fill();
+
+                    cCtx.fillStyle = '#ffffff';
+                    cCtx.beginPath();
+                    cCtx.arc(-size * 0.06, 0, size * 0.1, 0, Math.PI * 2);
+                    cCtx.fill();
+                } else if (waveSkin === 'needle') {
+                    // Lång, sylvasst slimmad nål-wave
+                    cCtx.fillStyle = col.primary;
+                    cCtx.strokeStyle = '#ffffff';
+                    cCtx.lineWidth = 2.2;
+                    cCtx.beginPath();
+                    cCtx.moveTo(size * 0.68, 0);
+                    cCtx.lineTo(-size * 0.52, -size * 0.28);
+                    cCtx.lineTo(-size * 0.34, 0);
+                    cCtx.lineTo(-size * 0.52, size * 0.28);
+                    cCtx.closePath();
+                    cCtx.fill();
+                    cCtx.stroke();
+                } else if (waveSkin === 'blade') {
+                    // Dubbel-vingad cyberklinga
+                    cCtx.fillStyle = col.secondary;
+                    cCtx.strokeStyle = '#ffffff';
+                    cCtx.lineWidth = 2.2;
+                    cCtx.beginPath();
+                    cCtx.moveTo(size * 0.6, 0);
+                    cCtx.lineTo(-size * 0.15, -size * 0.48);
+                    cCtx.lineTo(-size * 0.48, -size * 0.34);
+                    cCtx.lineTo(-size * 0.22, 0);
+                    cCtx.lineTo(-size * 0.48, size * 0.34);
+                    cCtx.lineTo(-size * 0.15, size * 0.48);
+                    cCtx.closePath();
+                    cCtx.fill();
+                    cCtx.stroke();
+
+                    cCtx.fillStyle = col.primary;
+                    cCtx.beginPath();
+                    cCtx.moveTo(size * 0.42, 0);
+                    cCtx.lineTo(-size * 0.16, -size * 0.18);
+                    cCtx.lineTo(-size * 0.16, size * 0.18);
+                    cCtx.closePath();
+                    cCtx.fill();
+                } else {
+                    // Klassisk standard-pil
+                    cCtx.fillStyle = col.primary;
+                    cCtx.strokeStyle = '#ffffff';
+                    cCtx.lineWidth = 2.5;
+                    cCtx.beginPath();
+                    cCtx.moveTo(size * 0.58, 0);
+                    cCtx.lineTo(-size * 0.48, -size * 0.42);
+                    cCtx.lineTo(-size * 0.24, 0);
+                    cCtx.lineTo(-size * 0.48, size * 0.42);
+                    cCtx.closePath();
+                    cCtx.fill();
+                    cCtx.stroke();
+                }
+
                 cCtx.restore();
                 return;
             }
@@ -2196,8 +2452,84 @@
                 if (ox + ow < -TILE * 2 || ox > viewW + TILE * 2) continue;
 
                 const baseGround = groundY + camY;
+                const objRotRad = ((o.rot || 0) * Math.PI) / 180;
 
-                if (o.type === 'block') {
+                if (o.type === 'deco_pillar') {
+                    const cx = ox + TILE / 2;
+                    const cy = baseGround - (o.y + 0.5) * TILE;
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.rotate(objRotRad);
+                    ctx.fillStyle = 'rgba(129, 140, 248, 0.16)';
+                    ctx.strokeStyle = 'rgba(165, 180, 252, 0.45)';
+                    ctx.lineWidth = 1.5;
+                    ctx.fillRect(-TILE / 2 + 10, -TILE / 2, TILE - 20, TILE);
+                    ctx.strokeRect(-TILE / 2 + 10, -TILE / 2, TILE - 20, TILE);
+                    ctx.beginPath();
+                    ctx.moveTo(0, -TILE / 2 + 4);
+                    ctx.lineTo(0, TILE / 2 - 4);
+                    ctx.stroke();
+                    ctx.restore();
+                } else if (o.type === 'deco_grid') {
+                    const cx = ox + TILE / 2;
+                    const cy = baseGround - (o.y + 0.5) * TILE;
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.rotate(objRotRad);
+                    ctx.fillStyle = 'rgba(192, 132, 252, 0.12)';
+                    ctx.strokeStyle = 'rgba(216, 180, 254, 0.42)';
+                    ctx.lineWidth = 1.5;
+                    ctx.fillRect(-TILE / 2 + 3, -TILE / 2 + 3, TILE - 6, TILE - 6);
+                    ctx.strokeRect(-TILE / 2 + 3, -TILE / 2 + 3, TILE - 6, TILE - 6);
+                    ctx.beginPath();
+                    ctx.moveTo(-TILE / 2 + 8, -TILE / 2 + 8);
+                    ctx.lineTo(TILE / 2 - 8, TILE / 2 - 8);
+                    ctx.moveTo(TILE / 2 - 8, -TILE / 2 + 8);
+                    ctx.lineTo(-TILE / 2 + 8, TILE / 2 - 8);
+                    ctx.stroke();
+                    ctx.restore();
+                } else if (o.type === 'deco_crystal') {
+                    const cx = ox + TILE / 2;
+                    const cy = baseGround - o.y * TILE - TILE / 2;
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.rotate(objRotRad);
+                    ctx.shadowColor = '#2dd4bf';
+                    ctx.shadowBlur = 10;
+                    ctx.fillStyle = 'rgba(45, 212, 191, 0.22)';
+                    ctx.strokeStyle = '#5eead4';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -TILE * 0.38);
+                    ctx.lineTo(TILE * 0.3, 0);
+                    ctx.lineTo(0, TILE * 0.38);
+                    ctx.lineTo(-TILE * 0.3, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                } else if (o.type === 'deco_arrow') {
+                    const cx = ox + TILE / 2;
+                    const cy = baseGround - o.y * TILE - TILE / 2;
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.rotate(objRotRad);
+                    ctx.shadowColor = '#fde68a';
+                    ctx.shadowBlur = 10;
+                    ctx.strokeStyle = 'rgba(253, 230, 138, 0.75)';
+                    ctx.lineWidth = 3;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(-10, -11);
+                    ctx.lineTo(4, 0);
+                    ctx.lineTo(-10, 11);
+                    ctx.moveTo(2, -11);
+                    ctx.lineTo(15, 0);
+                    ctx.lineTo(2, 11);
+                    ctx.stroke();
+                    ctx.restore();
+                } else if (o.type === 'block') {
                     const oh = (o.h || 1) * TILE;
                     const oy = baseGround - (o.y + (o.h || 1)) * TILE;
                     ctx.fillStyle = theme.blockFill;
@@ -2214,30 +2546,36 @@
                         }
                     }
                 } else if (o.type === 'spike') {
-                    const sy = baseGround - (o.y + 1) * TILE;
+                    const cx = ox + TILE / 2;
+                    const cy = baseGround - (o.y + 0.5) * TILE;
                     ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.rotate(objRotRad);
                     ctx.shadowColor = '#ff4d6d';
                     ctx.shadowBlur = 10;
                     ctx.fillStyle = '#090d1c';
                     ctx.strokeStyle = '#ff4d6d';
                     ctx.lineWidth = 2.5;
                     ctx.beginPath();
-                    ctx.moveTo(ox + TILE / 2, sy + 5);
-                    ctx.lineTo(ox + TILE - 4, sy + TILE - 1);
-                    ctx.lineTo(ox + 4, sy + TILE - 1);
+                    ctx.moveTo(0, -TILE / 2 + 5);
+                    ctx.lineTo(TILE / 2 - 4, TILE / 2 - 1);
+                    ctx.lineTo(-TILE / 2 + 4, TILE / 2 - 1);
                     ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
                     ctx.restore();
                 } else if (o.type === 'pad' || o.type === 'blue_pad' || o.type === 'pink_pad') {
-                    const py = baseGround - o.y * TILE;
+                    const cx = ox + TILE / 2;
+                    const cy = baseGround - (o.y + 0.5) * TILE;
                     const padColor = o.type === 'blue_pad' ? '#38bdf8' : o.type === 'pink_pad' ? '#f472b6' : '#ffd166';
                     ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.rotate(objRotRad);
                     ctx.shadowColor = padColor;
                     ctx.shadowBlur = 12;
                     ctx.fillStyle = padColor;
                     ctx.beginPath();
-                    ctx.roundRect(ox + 6, py - 10, TILE - 12, 10, 5);
+                    ctx.roundRect(-TILE / 2 + 6, TILE / 2 - 10, TILE - 12, 10, 5);
                     ctx.fill();
                     ctx.restore();
                 } else if (o.type === 'orb' || o.type === 'blue_orb' || o.type === 'pink_orb') {
@@ -2278,9 +2616,24 @@
             if (isEditor && editorState.hoverGridX >= 0 && editorState.hoverGridY >= 0 && editorState.tool !== 'pan') {
                 const hx = editorState.hoverGridX * TILE - camX;
                 const hy = groundY + camY - (editorState.hoverGridY + 1) * TILE;
-                ctx.strokeStyle = editorState.tool === 'erase' ? '#ff4d6d' : '#00f5d4';
+                ctx.strokeStyle = editorState.tool === 'erase' ? '#ff4d6d' : editorState.tool === 'rotate' ? '#818cf8' : '#00f5d4';
                 ctx.lineWidth = 2;
                 ctx.strokeRect(hx + 2, hy + 2, TILE - 4, TILE - 4);
+
+                // Riktningsindikator för aktuell 90°-rotation
+                if (editorState.tool !== 'erase' && editorState.tool !== 'rotate') {
+                    ctx.save();
+                    ctx.translate(hx + TILE / 2, hy + TILE / 2);
+                    ctx.rotate((editorState.rotation * Math.PI) / 180);
+                    ctx.fillStyle = 'rgba(0, 245, 212, 0.75)';
+                    ctx.beginPath();
+                    ctx.moveTo(0, -TILE / 2 + 4);
+                    ctx.lineTo(5, -TILE / 2 + 11);
+                    ctx.lineTo(-5, -TILE / 2 + 11);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
             }
 
             // Checkpoints i övningsläge
@@ -2425,9 +2778,22 @@
 
             editorState.cameraX = 0;
             editorState.cameraY = 2;
+            editorState.rotation = 0;
             document.getElementById('editorScrollSlider').value = '0';
             document.getElementById('editorScrollYSlider').value = '2';
             updateEditorCoordLabels();
+            updateEditorRotationLabel();
+        }
+
+        function rotateEditorPlacement() {
+            editorState.rotation = (editorState.rotation + 90) % 360;
+            updateEditorRotationLabel();
+            showToast(`↻ Rotation: ${editorState.rotation}°`);
+        }
+
+        function updateEditorRotationLabel() {
+            const el = document.getElementById('editorRotationReadout');
+            if (el) el.textContent = `${editorState.rotation}°`;
         }
 
         function setEditorTool(tool) {
@@ -2459,6 +2825,19 @@
         function applyEditorToolAt(gx, gy) {
             if (gx < 0 || gy < 0 || gy > 22) return;
 
+            if (editorState.tool === 'rotate') {
+                const target = editorState.objects.find(o => {
+                    const ow = o.w || 1;
+                    const oh = o.h || 1;
+                    return gx >= o.x && gx < o.x + ow && gy >= o.y && gy < o.y + oh;
+                });
+                if (target) {
+                    target.rot = ((target.rot || 0) + 90) % 360;
+                    showToast(`↻ Roterade objekt till ${target.rot}°`);
+                }
+                return;
+            }
+
             if (editorState.tool === 'erase') {
                 editorState.objects = editorState.objects.filter(o => {
                     const ow = o.w || 1;
@@ -2472,6 +2851,9 @@
             editorState.objects = editorState.objects.filter(o => !(o.x === gx && o.y === gy));
 
             const newObj = { type: editorState.tool, x: gx, y: gy };
+            if (editorState.rotation) {
+                newObj.rot = editorState.rotation;
+            }
             if (editorState.tool === 'block') {
                 newObj.w = 1;
                 newObj.h = 1;
@@ -2509,7 +2891,7 @@
                 document.getElementById('editorScrollSlider').value = String(Math.round(editorState.cameraX));
                 document.getElementById('editorScrollYSlider').value = String(Math.round(editorState.cameraY));
                 updateEditorCoordLabels();
-            } else {
+            } else if (editorState.tool !== 'rotate') {
                 applyEditorToolAt(gx, gy);
             }
         }
@@ -2544,10 +2926,25 @@
         // --- MENY & UI-HÄNDELSER ---
         function renderPreviewCube() {
             const pCanvas = document.getElementById('previewCubeCanvas');
-            if (!pCanvas) return;
-            const pCtx = pCanvas.getContext('2d');
-            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-            drawCubeGraphic(pCtx, pCanvas.width / 2, pCanvas.height / 2, 56, 0, 'CUBE', 1);
+            if (pCanvas) {
+                const pCtx = pCanvas.getContext('2d');
+                pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+                drawCubeGraphic(pCtx, pCanvas.width / 2, pCanvas.height / 2, 44, 0, 'CUBE', 1);
+            }
+
+            const sCanvas = document.getElementById('previewShipCanvas');
+            if (sCanvas) {
+                const sCtx = sCanvas.getContext('2d');
+                sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
+                drawCubeGraphic(sCtx, sCanvas.width / 2, sCanvas.height / 2 + 4, 44, 0, 'SHIP', 1);
+            }
+
+            const wCanvas = document.getElementById('previewWaveCanvas');
+            if (wCanvas) {
+                const wCtx = wCanvas.getContext('2d');
+                wCtx.clearRect(0, 0, wCanvas.width, wCanvas.height);
+                drawCubeGraphic(wCtx, wCanvas.width / 2, wCanvas.height / 2, 46, -0.35, 'WAVE', 1);
+            }
         }
 
         function renderCustomizationControls() {
@@ -2557,7 +2954,7 @@
                 CUBE_COLORS.forEach((col, idx) => {
                     const btn = document.createElement('button');
                     const active = saveData.colorIndex === idx;
-                    btn.className = `h-9 rounded-xl border-2 cursor-pointer transition-transform ${active ? 'border-white scale-110 shadow-lg' : 'border-white/20 hover:scale-105'}`;
+                    btn.className = `h-8 rounded-xl border-2 cursor-pointer transition-transform ${active ? 'border-white scale-110 shadow-lg' : 'border-white/20 hover:scale-105'}`;
                     btn.style.background = `linear-gradient(135deg, ${col.primary}, ${col.secondary})`;
                     btn.addEventListener('click', () => {
                         saveData.colorIndex = idx;
@@ -2575,7 +2972,7 @@
                 CUBE_SKINS.forEach(s => {
                     const btn = document.createElement('button');
                     const active = saveData.skinId === s.id;
-                    btn.className = `py-2 px-1 rounded-xl text-[11px] font-bold border cursor-pointer transition-colors ${active ? 'bg-cyan-500/25 border-cyan-400 text-cyan-200' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`;
+                    btn.className = `py-1.5 px-1 rounded-xl text-[11px] font-bold border cursor-pointer transition-colors ${active ? 'bg-cyan-500/25 border-cyan-400 text-cyan-200' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`;
                     btn.textContent = s.label;
                     btn.addEventListener('click', () => {
                         saveData.skinId = s.id;
@@ -2584,6 +2981,42 @@
                         renderPreviewCube();
                     });
                     skinEl.appendChild(btn);
+                });
+            }
+
+            const shipSkinEl = document.getElementById('shipSkinSelector');
+            if (shipSkinEl) {
+                shipSkinEl.innerHTML = '';
+                SHIP_SKINS.forEach(s => {
+                    const btn = document.createElement('button');
+                    const active = (saveData.shipSkinId || 'classic') === s.id;
+                    btn.className = `py-1.5 px-1 rounded-xl text-[11px] font-bold border cursor-pointer transition-colors ${active ? 'bg-pink-500/25 border-pink-400 text-pink-200' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`;
+                    btn.textContent = s.label;
+                    btn.addEventListener('click', () => {
+                        saveData.shipSkinId = s.id;
+                        persistSave();
+                        renderCustomizationControls();
+                        renderPreviewCube();
+                    });
+                    shipSkinEl.appendChild(btn);
+                });
+            }
+
+            const waveSkinEl = document.getElementById('waveSkinSelector');
+            if (waveSkinEl) {
+                waveSkinEl.innerHTML = '';
+                WAVE_SKINS.forEach(s => {
+                    const btn = document.createElement('button');
+                    const active = (saveData.waveSkinId || 'classic') === s.id;
+                    btn.className = `py-1.5 px-1 rounded-xl text-[11px] font-bold border cursor-pointer transition-colors ${active ? 'bg-cyan-500/25 border-cyan-400 text-cyan-200' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`;
+                    btn.textContent = s.label;
+                    btn.addEventListener('click', () => {
+                        saveData.waveSkinId = s.id;
+                        persistSave();
+                        renderCustomizationControls();
+                        renderPreviewCube();
+                    });
+                    waveSkinEl.appendChild(btn);
                 });
             }
         }
@@ -2814,6 +3247,7 @@
 
         // Editor-knappar & reglage
         document.getElementById('editorExitBtn').addEventListener('click', returnToMainMenu);
+        document.getElementById('editorRotateBtn').addEventListener('click', rotateEditorPlacement);
         document.getElementById('editorClearBtn').addEventListener('click', () => {
             editorState.objects = [];
             showToast('🗑️ Banan rensad');
