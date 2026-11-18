@@ -1,0 +1,3395 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GeoDash Neon</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Orbitron & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #060913;
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+        }
+        .font-display {
+            font-family: 'Orbitron', sans-serif;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        /* Neonglöd och animerade knappar */
+        .neon-btn {
+            transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, filter 0.2s ease;
+        }
+        .neon-btn:hover {
+            transform: translateY(-2px) scale(1.02);
+            filter: brightness(1.12);
+        }
+        .neon-btn:active {
+            transform: translateY(1px) scale(0.97);
+        }
+        .glass-panel {
+            background: rgba(10, 15, 32, 0.84);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+        }
+        @keyframes pulseGlow {
+            0%, 100% { filter: drop-shadow(0 0 12px rgba(0, 245, 212, 0.65)); }
+            50% { filter: drop-shadow(0 0 24px rgba(0, 245, 212, 0.95)); }
+        }
+        .title-glow {
+            animation: pulseGlow 2.4s infinite ease-in-out;
+        }
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 999px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(0, 245, 212, 0.35);
+            border-radius: 999px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 245, 212, 0.65);
+        }
+    </style>
+</head>
+<body class="text-white relative">
+
+    <!-- Spelcanvas som täcker hela skärmen -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD under aktivt spel -->
+    <div id="hud" class="hidden fixed inset-0 pointer-events-none z-10 flex flex-col justify-between p-4 sm:p-6">
+        <!-- Topp-rad: Progressbar, Försök & Paus -->
+        <div class="w-full max-w-4xl mx-auto flex items-center justify-between gap-3">
+            <!-- Försök & poäng -->
+            <div class="glass-panel rounded-xl px-3.5 py-2 flex items-center gap-2.5 border border-white/15">
+                <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Försök</span>
+                <span id="hudAttempt" class="font-display font-bold text-base sm:text-lg text-cyan-300">1</span>
+                <span id="hudModeBadge" class="hidden px-2 py-0.5 rounded-md text-[10px] font-display font-bold uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">CUBE</span>
+                <span id="hudPracticeBadge" class="hidden px-2 py-0.5 rounded-md text-[10px] font-display font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">ÖVNING</span>
+            </div>
+
+            <!-- Framstegsmätare (Progress bar) -->
+            <div class="flex-1 max-w-md flex flex-col items-center">
+                <div class="w-full flex justify-between text-xs font-semibold mb-1 px-1">
+                    <span id="hudLevelName" class="text-slate-200 truncate">Nivå 1: StereoStart</span>
+                    <span id="hudPercent" class="font-display text-cyan-300">0%</span>
+                </div>
+                <div class="w-full h-3 bg-slate-900/90 rounded-full overflow-hidden border border-white/15 p-0.5 shadow-inner">
+                    <div id="hudProgressBar" class="h-full rounded-full transition-all duration-75" style="width: 0%; background: linear-gradient(90deg, #00f5d4, #00bbf9);"></div>
+                </div>
+            </div>
+
+            <!-- Pausknapp -->
+            <button id="pauseBtn" class="pointer-events-auto neon-btn glass-panel rounded-xl p-3 text-white hover:text-cyan-300 border border-white/15 cursor-pointer" aria-label="Pausa spel">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Övningsläge: Snabbknappar för checkpoints -->
+        <div id="practiceControls" class="hidden pointer-events-auto self-center flex items-center gap-3 mb-1">
+            <button id="placeCpBtn" class="neon-btn glass-panel rounded-xl px-4 py-2.5 text-xs sm:text-sm font-display font-bold text-emerald-300 border border-emerald-400/40 flex items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-950/50">
+                <span class="inline-block w-2.5 h-2.5 rotate-45 bg-emerald-400"></span>
+                <span>CHECKPOINT (Z)</span>
+            </button>
+            <button id="removeCpBtn" class="neon-btn glass-panel rounded-xl px-4 py-2.5 text-xs sm:text-sm font-display font-bold text-rose-300 border border-rose-400/40 flex items-center gap-1.5 cursor-pointer shadow-lg shadow-rose-950/50">
+                <span>✕ TA BORT (X)</span>
+            </button>
+        </div>
+
+        <!-- Botten-hint för nya spelare -->
+        <div id="hudHint" class="text-center text-xs sm:text-sm text-white/65 font-medium tracking-wide transition-opacity duration-500">
+            Håll inne <span class="px-2 py-0.5 rounded bg-white/10 text-white font-semibold">MELLANSLAG</span>, <span class="px-2 py-0.5 rounded bg-white/10 text-white font-semibold">PIL UPP</span> eller <span class="px-2 py-0.5 rounded bg-white/10 text-white font-semibold">PEKA / KLICKA</span>
+        </div>
+    </div>
+
+    <!-- HUD för Banskappare (Level Editor) -->
+    <div id="editorHud" class="hidden fixed inset-0 pointer-events-none z-20 flex flex-col justify-between p-3 sm:p-5">
+        <!-- Topp-rad: Tillbaka, Bannamn, Inställningar, Spara, Dela & Testspela -->
+        <div class="w-full max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2 pointer-events-auto">
+            <div class="flex items-center gap-2">
+                <button id="editorExitBtn" class="neon-btn glass-panel rounded-xl px-3.5 py-2 text-xs sm:text-sm font-display font-bold text-slate-200 hover:text-white border border-white/15 cursor-pointer">
+                    ← MENY
+                </button>
+                <input id="editorNameInput" type="text" maxlength="24" value="Min Egen Bana" placeholder="Bannamn..." class="glass-panel rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold text-white placeholder-slate-400 border border-white/15 focus:outline-none focus:border-cyan-400 w-36 sm:w-48">
+            </div>
+
+            <!-- Baninställningar: Hastighet, Färgtema & Längd -->
+            <div class="glass-panel rounded-xl px-3 py-1.5 flex flex-wrap items-center gap-2 sm:gap-3 border border-white/15 text-xs">
+                <label class="flex items-center gap-1.5 text-slate-300 font-semibold">
+                    <span>Fart:</span>
+                    <select id="editorSpeedSelect" class="bg-slate-900/90 text-cyan-300 font-display font-bold rounded-lg px-2 py-1 border border-white/10 focus:outline-none cursor-pointer">
+                        <option value="390">1x Lätt</option>
+                        <option value="445" selected>1.1x Normal</option>
+                        <option value="485">1.2x Snabb</option>
+                        <option value="520">1.3x Turbo</option>
+                        <option value="545">1.4x Demon</option>
+                    </select>
+                </label>
+
+                <label class="flex items-center gap-1.5 text-slate-300 font-semibold">
+                    <span>Tema:</span>
+                    <select id="editorThemeSelect" class="bg-slate-900/90 text-pink-300 font-display font-bold rounded-lg px-2 py-1 border border-white/10 focus:outline-none cursor-pointer">
+                        <option value="0">Cyan / Blå</option>
+                        <option value="1">Magenta / Lila</option>
+                        <option value="2">Neonröd / Orange</option>
+                        <option value="3">Guld / Gul</option>
+                        <option value="4">Smaragd / Lime</option>
+                    </select>
+                </label>
+
+                <label class="flex items-center gap-1.5 text-slate-300 font-semibold">
+                    <span>Mål X:</span>
+                    <input id="editorLengthInput" type="number" min="30" max="1200" step="10" value="120" class="w-16 bg-slate-900/90 text-emerald-300 font-display font-bold rounded-lg px-2 py-1 border border-white/10 focus:outline-none">
+                </label>
+            </div>
+
+            <!-- Åtgärdsknappar -->
+            <div class="flex items-center gap-2">
+                <button id="editorClearBtn" class="neon-btn glass-panel rounded-xl px-3 py-2 text-xs font-display font-bold text-rose-300 border border-rose-400/30 cursor-pointer" title="Rensa hela banan">
+                    🗑️ RENSA
+                </button>
+                <button id="editorShareBtn" class="neon-btn glass-panel rounded-xl px-3 py-2 text-xs font-display font-bold text-amber-300 border border-amber-400/30 cursor-pointer" title="Exportera eller importera bankod">
+                    📋 KOD
+                </button>
+                <button id="editorSaveBtn" class="neon-btn rounded-xl px-3.5 py-2 text-xs font-display font-bold text-slate-950 bg-gradient-to-r from-emerald-400 to-cyan-400 cursor-pointer shadow-lg shadow-emerald-500/20">
+                    💾 SPARA
+                </button>
+                <button id="editorPublishBtn" class="neon-btn rounded-xl px-3.5 py-2 text-xs font-display font-bold text-white bg-gradient-to-r from-fuchsia-500 to-indigo-500 cursor-pointer shadow-lg shadow-fuchsia-500/25" title="Lägg ut banan publikt så alla kan spela den">
+                    🌐 PUBLICERA
+                </button>
+                <button id="editorPlayBtn" class="neon-btn rounded-xl px-4 py-2 text-xs sm:text-sm font-display font-black text-slate-950 bg-gradient-to-r from-amber-300 to-orange-400 cursor-pointer shadow-lg shadow-amber-500/25">
+                    ▶ TESTA
+                </button>
+            </div>
+        </div>
+
+        <!-- Botten-rad: Verktygspalett & Kameranavigering -->
+        <div class="w-full max-w-6xl mx-auto flex flex-col gap-2 pointer-events-auto">
+            <!-- Horisontell & Vertikal kameraposition (X och Y) -->
+            <div class="glass-panel rounded-xl px-4 py-2 flex flex-wrap items-center gap-3 border border-white/15">
+                <div class="flex-1 min-w-[180px] flex items-center gap-2.5">
+                    <span class="text-[11px] font-display font-bold text-slate-400 uppercase whitespace-nowrap">Kamera X:</span>
+                    <input id="editorScrollSlider" type="range" min="0" max="120" value="0" class="flex-1 accent-cyan-400 cursor-pointer">
+                    <span id="editorCoordReadout" class="text-xs font-display font-bold text-cyan-300 w-16 text-right">X: 0</span>
+                </div>
+                <div class="w-px h-4 bg-white/15 hidden sm:block"></div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[11px] font-display font-bold text-slate-400 uppercase whitespace-nowrap">Höjd Y:</span>
+                    <input id="editorScrollYSlider" type="range" min="-4" max="20" value="2" class="w-24 sm:w-32 accent-pink-400 cursor-pointer">
+                    <span id="editorCoordYReadout" class="text-xs font-display font-bold text-pink-300 w-12 text-right">Y: 2</span>
+                </div>
+            </div>
+
+            <!-- Verktygspalett -->
+            <div class="glass-panel rounded-2xl p-2 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 border border-white/15">
+                <button data-tool="block" class="editor-tool-btn active neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-cyan-400 bg-cyan-500/25 text-white cursor-pointer">
+                    <span class="inline-block w-3.5 h-3.5 rounded-sm bg-cyan-400 border border-white"></span>
+                    <span>BLOCK (1)</span>
+                </button>
+                <button data-tool="spike" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer">
+                    <span class="text-rose-400 text-sm leading-none">▲</span>
+                    <span>SPIK (2)</span>
+                </button>
+                <button data-tool="pad" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer">
+                    <span class="inline-block w-4 h-1.5 rounded-full bg-amber-300"></span>
+                    <span>PAD (3)</span>
+                </button>
+                <button data-tool="blue_pad" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer">
+                    <span class="inline-block w-4 h-1.5 rounded-full bg-sky-400"></span>
+                    <span>BLUE PAD (4)</span>
+                </button>
+                <button data-tool="pink_pad" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer">
+                    <span class="inline-block w-4 h-1.5 rounded-full bg-pink-400"></span>
+                    <span>PINK PAD</span>
+                </button>
+                <button data-tool="orb" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer">
+                    <span class="inline-block w-3.5 h-3.5 rounded-full bg-amber-300 border-2 border-white"></span>
+                    <span>ORB (5)</span>
+                </button>
+                <button data-tool="blue_orb" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer">
+                    <span class="inline-block w-3.5 h-3.5 rounded-full bg-sky-400 border-2 border-white"></span>
+                    <span>BLUE ORB (6)</span>
+                </button>
+                <button data-tool="pink_orb" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer">
+                    <span class="inline-block w-3.5 h-3.5 rounded-full bg-pink-400 border-2 border-white"></span>
+                    <span>PINK ORB</span>
+                </button>
+                <button data-tool="portal_cube" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer">
+                    <span class="inline-block w-3.5 h-3.5 rounded bg-emerald-400 border border-white"></span>
+                    <span>KUB (7)</span>
+                </button>
+                <button data-tool="portal_ship" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer">
+                    <span class="text-pink-400 text-sm leading-none">🚀</span>
+                    <span>SHIP (8)</span>
+                </button>
+                <button data-tool="portal_wave" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer">
+                    <span class="text-cyan-300 text-sm leading-none">❖</span>
+                    <span>WAVE (9)</span>
+                </button>
+                <button data-tool="erase" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer">
+                    <span class="text-rose-400 font-black">✕</span>
+                    <span>SUDDA (0)</span>
+                </button>
+                <button data-tool="pan" class="editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer">
+                    <span>✋ FLYTTA</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal för Import / Export av bankod -->
+    <div id="shareModal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="glass-panel rounded-3xl p-6 max-w-md w-full border border-white/15">
+            <h3 class="font-display font-black text-xl text-cyan-300 mb-2">DELA ELLER LADDA BANKOD</h3>
+            <p class="text-xs text-slate-300 mb-3">Kopiera koden nedan för att dela din bana, eller klistra in en kod från en vän och klicka på <strong>Ladda kod</strong>.</p>
+            <textarea id="shareCodeTextarea" rows="4" class="w-full bg-slate-950/90 text-emerald-300 font-mono text-xs rounded-xl p-3 border border-white/15 focus:outline-none focus:border-cyan-400 mb-4" placeholder="Klistra in bankod här..."></textarea>
+            <div class="flex flex-wrap gap-2 justify-end">
+                <button id="closeShareModalBtn" class="neon-btn rounded-xl px-4 py-2 text-xs font-display font-bold bg-white/10 text-slate-200 border border-white/15 cursor-pointer">STÄNG</button>
+                <button id="copyShareCodeBtn" class="neon-btn rounded-xl px-4 py-2 text-xs font-display font-bold bg-cyan-500/25 text-cyan-300 border border-cyan-400/40 cursor-pointer">KOPIERA KOD</button>
+                <button id="importShareCodeBtn" class="neon-btn rounded-xl px-4 py-2 text-xs font-display font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 text-slate-950 cursor-pointer">LADDA KOD</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Huvudmeny Overlay -->
+    <div id="mainMenu" class="fixed inset-0 z-20 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-panel rounded-3xl p-6 sm:p-8 max-w-4xl w-full border border-white/15 my-auto">
+            <!-- Logotyp & Rubrik -->
+            <div class="text-center mb-5">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-bold tracking-widest uppercase mb-2">
+                    <span>⚡ Rytm &amp; Reflexer</span>
+                </div>
+                <h1 class="font-display font-black text-3xl sm:text-5xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-sky-400 to-fuchsia-400 title-glow">
+                    GEODASH NEON
+                </h1>
+                <p class="text-slate-300 text-xs sm:text-sm mt-1">Hoppa, flyg som skepp och sicksacka som våg i takt med neonsynthen</p>
+            </div>
+
+            <!-- Innehållsgrid: Nivåer + Egna Banor + Kubanpassning -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                <!-- Nivåväljare (Vänster kolumn) -->
+                <div class="lg:col-span-7 flex flex-col gap-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h2 class="font-display font-bold text-xs uppercase tracking-widest text-slate-400">Välj Bana</h2>
+                        <div class="flex items-center gap-2">
+                            <!-- Knapp för Banskappare -->
+                            <button id="openEditorBtn" class="neon-btn rounded-xl px-3 py-1.5 text-xs font-display font-bold bg-gradient-to-r from-amber-400/20 to-orange-500/20 text-amber-300 border border-amber-400/40 cursor-pointer">
+                                🛠️ BYGG EGEN BANA
+                            </button>
+                            <!-- Toggle för Övningsläge -->
+                            <button id="practiceModeToggle" class="neon-btn rounded-xl px-3 py-1.5 text-xs font-display font-bold flex items-center gap-1.5 border border-white/15 bg-white/5 text-slate-300 cursor-pointer">
+                                <span id="practiceToggleDot" class="inline-block w-2.5 h-2.5 rotate-45 bg-slate-500 transition-colors"></span>
+                                <span>ÖVNINGSLÄGE: <span id="practiceToggleText">AV</span></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="levelList" class="flex flex-col gap-2.5 max-h-[52vh] min-h-[240px] overflow-y-auto pr-1 custom-scroll">
+                        <!-- Fylls dynamiskt av JS -->
+                    </div>
+
+                    <!-- Community / Publicerade Banor -->
+                    <div class="mt-2 pt-3 border-t border-white/10">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-display font-bold text-xs uppercase tracking-widest text-fuchsia-300 flex items-center gap-1.5">
+                                <span>🌐 Publicerade Banor</span>
+                                <span id="communityCountBadge" class="px-2 py-0.5 rounded-full text-[10px] bg-fuchsia-500/20 border border-fuchsia-400/30 text-fuchsia-200">0</span>
+                            </h3>
+                            <span id="onlineStatusLabel" class="text-[10px] text-slate-400">Ansluter...</span>
+                        </div>
+                        <div id="communityLevelList" class="flex flex-col gap-2 max-h-[24vh] overflow-y-auto pr-1 custom-scroll">
+                            <div class="text-xs text-slate-400 italic py-2">Laddar publicerade banor...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kubanpassning & Ljud (Höger kolumn) -->
+                <div class="lg:col-span-5 glass-panel rounded-2xl p-4 sm:p-5 border border-white/10 flex flex-col gap-4 bg-slate-900/60">
+                    <div class="flex items-center justify-between">
+                        <h2 class="font-display font-bold text-xs uppercase tracking-widest text-slate-400">Anpassa Kub</h2>
+                        <button id="muteToggleBtn" class="neon-btn rounded-xl px-3 py-1.5 text-xs font-semibold bg-white/10 hover:bg-white/15 border border-white/15 flex items-center gap-1.5 cursor-pointer" title="Ljud på/av">
+                            <span id="muteIcon">🔊</span>
+                            <span id="muteLabel">Ljud På</span>
+                        </button>
+                    </div>
+
+                    <!-- Förhandsvisning av kuben -->
+                    <div class="flex items-center justify-center py-3 bg-slate-950/70 rounded-2xl border border-white/10 relative overflow-hidden">
+                        <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(#00f5d4 1px, transparent 1px); background-size: 14px 14px;"></div>
+                        <canvas id="previewCubeCanvas" width="96" height="96" class="w-24 h-24 relative z-10"></canvas>
+                    </div>
+
+                    <!-- Färgval -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-2">Neonfärg</label>
+                        <div id="colorPalette" class="grid grid-cols-6 gap-2">
+                            <!-- Fylls av JS -->
+                        </div>
+                    </div>
+
+                    <!-- Utseende / Mönster -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-2">Utseende</label>
+                        <div id="skinSelector" class="grid grid-cols-4 gap-2">
+                            <!-- Fylls av JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Snabbstartsknapp -->
+            <div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-white/10">
+                <div class="text-xs text-slate-400 text-center sm:text-left">
+                    Tips: Håll inne knappen för <strong class="text-slate-200">autohopp</strong> (Cube), <strong class="text-pink-300">lyft</strong> (Ship) eller <strong class="text-cyan-300">stig</strong> (Wave).
+                </div>
+                <button id="quickPlayBtn" class="neon-btn w-full sm:w-auto px-8 py-3.5 rounded-2xl font-display font-extrabold text-sm sm:text-base tracking-wider text-slate-950 bg-gradient-to-r from-cyan-300 to-sky-400 shadow-lg shadow-cyan-500/30 cursor-pointer">
+                    ▶ SPELA NU
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pausmeny Overlay -->
+    <div id="pauseModal" class="hidden fixed inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md">
+        <div class="glass-panel rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center border border-white/15">
+            <h2 class="font-display font-black text-2xl sm:text-3xl text-white mb-2">PAUSAD</h2>
+            <p id="pauseStats" class="text-slate-300 text-sm mb-6">Framsteg: 0% • Försök 1</p>
+
+            <div class="flex flex-col gap-3">
+                <button id="resumeBtn" class="neon-btn w-full py-3.5 rounded-2xl font-display font-bold text-slate-950 bg-gradient-to-r from-cyan-300 to-sky-400 cursor-pointer">
+                    ▶ FORTSÄTT
+                </button>
+                <button id="togglePracticeInPauseBtn" class="neon-btn w-full py-3 rounded-2xl font-display font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-400/35 cursor-pointer">
+                    ◆ ÖVNINGSLÄGE: AV
+                </button>
+                <button id="removeLastCpPauseBtn" class="hidden neon-btn w-full py-2.5 rounded-2xl font-display font-bold text-amber-300 bg-amber-500/15 border border-amber-400/35 cursor-pointer text-xs">
+                    ⌫ TA BORT SENASTE CHECKPOINT
+                </button>
+                <button id="restartBtn" class="neon-btn w-full py-3 rounded-2xl font-display font-bold text-white bg-white/10 hover:bg-white/15 border border-white/15 cursor-pointer">
+                    ↻ BÖRJA OM FRÅN 0%
+                </button>
+                <button id="backToEditorPauseBtn" class="hidden neon-btn w-full py-3 rounded-2xl font-display font-bold text-amber-300 bg-amber-500/15 border border-amber-400/35 cursor-pointer">
+                    🛠️ TILLBAKA TILL EDITOR
+                </button>
+                <button id="menuBtn" class="neon-btn w-full py-3 rounded-2xl font-display font-bold text-rose-300 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/30 cursor-pointer">
+                    ⌂ HUVUDMENY
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nivå Avklarad Overlay -->
+    <div id="victoryModal" class="hidden fixed inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md">
+        <div class="glass-panel rounded-3xl p-6 sm:p-8 max-w-md w-full text-center border border-emerald-400/30 shadow-2xl shadow-emerald-500/20">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-400/20 border border-emerald-400/40 text-3xl mb-4">
+                🏆
+            </div>
+            <h2 id="victoryTitle" class="font-display font-black text-2xl sm:text-3xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-cyan-300 mb-1">
+                BANA AVKLARAD!
+            </h2>
+            <p id="victoryLevelName" class="text-slate-300 font-semibold text-sm mb-5">Nivå 1: StereoStart</p>
+
+            <div class="grid grid-cols-2 gap-3 bg-slate-900/80 rounded-2xl p-4 mb-6 border border-white/10">
+                <div>
+                    <div class="text-xs text-slate-400 uppercase font-semibold">Försök</div>
+                    <div id="victoryAttempts" class="font-display font-black text-xl text-cyan-300">1</div>
+                </div>
+                <div>
+                    <div class="text-xs text-slate-400 uppercase font-semibold">Framsteg</div>
+                    <div class="font-display font-black text-xl text-emerald-400">100%</div>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button id="victoryReplayBtn" class="neon-btn flex-1 py-3.5 rounded-2xl font-display font-bold text-white bg-white/10 hover:bg-white/15 border border-white/15 cursor-pointer">
+                    ↻ SPELA IGEN
+                </button>
+                <button id="victoryNextBtn" class="neon-btn flex-1 py-3.5 rounded-2xl font-display font-bold text-slate-950 bg-gradient-to-r from-emerald-300 to-cyan-300 cursor-pointer">
+                    NÄSTA BANA ▶
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meddelanderuta (ersätter alert()) -->
+    <div id="toastBox" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 transition-opacity duration-300">
+        <div id="toastText" class="glass-panel px-4 py-2 rounded-full text-xs sm:text-sm font-semibold text-cyan-200 border border-cyan-400/30"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- MOLN- & COMMUNITY-BANOR ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'geodash-neon-default';
+        let cloudDb = null;
+        let cloudAuth = null;
+        let currentCloudUser = null;
+        window.communityLevels = [];
+
+        async function initCommunityCloud() {
+            const statusEl = document.getElementById('onlineStatusLabel');
+            try {
+                if (typeof __firebase_config === 'undefined') {
+                    if (statusEl) statusEl.textContent = 'Offline-läge';
+                    return;
+                }
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                cloudDb = getFirestore(app);
+                cloudAuth = getAuth(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    const cred = await signInWithCustomToken(cloudAuth, __initial_auth_token);
+                    currentCloudUser = cred.user;
+                } else {
+                    const cred = await signInAnonymously(cloudAuth);
+                    currentCloudUser = cred.user;
+                }
+
+                if (!currentCloudUser) return;
+                if (statusEl) {
+                    statusEl.textContent = `● Online (ID: ${currentCloudUser.uid})`;
+                    statusEl.className = 'text-[10px] text-emerald-400 truncate max-w-[180px]';
+                }
+
+                const publicCol = collection(cloudDb, 'artifacts', appId, 'public', 'data', 'published_levels');
+                onSnapshot(publicCol, (snapshot) => {
+                    const list = [];
+                    snapshot.forEach((docSnap) => {
+                        const d = docSnap.data();
+                        list.push({
+                            docId: docSnap.id,
+                            ...d,
+                            theme: (typeof THEME_PRESETS !== 'undefined' ? THEME_PRESETS[(d.themeIdx || 0) % THEME_PRESETS.length] : null)
+                        });
+                    });
+                    list.sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+                    window.communityLevels = list;
+                    if (typeof window.renderCommunityLevelsUI === 'function') {
+                        window.renderCommunityLevelsUI();
+                    }
+                }, (err) => {
+                    console.error('Kunde inte hämta publicerade banor:', err);
+                    if (statusEl) statusEl.textContent = 'Anslutningsfel';
+                });
+            } catch (err) {
+                console.error('Molninitiering misslyckades:', err);
+                if (statusEl) statusEl.textContent = 'Offline-läge';
+            }
+        }
+
+        window.publishLevelToCommunity = async function(levelObj) {
+            if (!cloudDb || !currentCloudUser) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Inte ansluten till molnet ännu – försök igen om en sekund.');
+                }
+                return;
+            }
+            try {
+                const docId = levelObj.id || ('pub_' + Date.now());
+                const pubRef = doc(cloudDb, 'artifacts', appId, 'public', 'data', 'published_levels', docId);
+                await setDoc(pubRef, {
+                    id: docId,
+                    name: levelObj.name || 'Namnlös Bana',
+                    speed: levelObj.speed || 445,
+                    length: levelObj.length || 120,
+                    themeIdx: levelObj.themeIdx ?? 0,
+                    obstacles: levelObj.obstacles || [],
+                    authorId: currentCloudUser.uid,
+                    plays: 0,
+                    publishedAt: Date.now()
+                }, { merge: true });
+
+                if (typeof window.showToast === 'function') {
+                    window.showToast(`🌐 "${levelObj.name}" är nu publicerad!`);
+                }
+            } catch (err) {
+                console.error('Publiceringsfel:', err);
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Kunde inte publicera banan just nu.');
+                }
+            }
+        };
+
+        window.deleteCommunityLevel = async function(docId) {
+            if (!cloudDb || !currentCloudUser) return;
+            try {
+                const pubRef = doc(cloudDb, 'artifacts', appId, 'public', 'data', 'published_levels', docId);
+                await deleteDoc(pubRef);
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Publicerad bana borttagen');
+                }
+            } catch (err) {
+                console.error('Kunde inte ta bort publicerad bana:', err);
+            }
+        };
+
+        window.incrementCommunityPlayCount = async function(docId) {
+            if (!cloudDb || !currentCloudUser || !docId) return;
+            try {
+                const pubRef = doc(cloudDb, 'artifacts', appId, 'public', 'data', 'published_levels', docId);
+                await updateDoc(pubRef, { plays: increment(1) });
+            } catch (err) {}
+        };
+
+        window.getCurrentCloudUserId = function() {
+            return currentCloudUser ? currentCloudUser.uid : null;
+        };
+
+        initCommunityCloud();
+    </script>
+
+    <script>
+        /**
+         * ============================================================================
+         * GEODASH NEON - KOMPLETT SPELMOTOR, LJUDSYNTES, BANSKAPPARE & SPELLÄGEN
+         * ============================================================================
+         */
+
+        // --- 1. LJUDSYNTES (WEB AUDIO API) ---
+        class NeonSoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+                this.musicTimer = null;
+                this.step = 0;
+                this.currentTrack = 0;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            setMuted(mute) {
+                this.muted = mute;
+                if (this.muted) {
+                    this.stopMusic();
+                }
+            }
+
+            playJump() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(210, now);
+                osc.frequency.exponentialRampToValueAtTime(540, now + 0.11);
+
+                gain.gain.setValueAtTime(0.14, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.12);
+            }
+
+            playOrb() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(420, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.14);
+
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            }
+
+            playPad() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(280, now);
+                osc.frequency.exponentialRampToValueAtTime(920, now + 0.18);
+
+                gain.gain.setValueAtTime(0.16, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.19);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.19);
+            }
+
+            playGravityFlip(inverted = true) {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(inverted ? 340 : 760, now);
+                osc.frequency.exponentialRampToValueAtTime(inverted ? 820 : 310, now + 0.16);
+
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.17);
+            }
+
+            playPortal() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                [330, 495, 660, 990].forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + i * 0.03);
+                    gain.gain.setValueAtTime(0.11, now + i * 0.03);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.03 + 0.16);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + i * 0.03);
+                    osc.stop(now + i * 0.03 + 0.16);
+                });
+            }
+
+            playCrash() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const bufferSize = this.ctx.sampleRate * 0.28;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.35));
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(750, now);
+                filter.frequency.exponentialRampToValueAtTime(90, now + 0.28);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.28, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start(now);
+            }
+
+            playWin() {
+                if (this.muted) return;
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, idx) => {
+                    const now = this.ctx.currentTime + idx * 0.09;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.32);
+                });
+            }
+
+            startMusic(trackIndex = 0) {
+                this.stopMusic();
+                if (this.muted) return;
+                this.init();
+                this.currentTrack = trackIndex;
+                this.step = 0;
+
+                const tracks = [
+                    { tempoMs: 145, bass: [110, 110, 130.81, 146.83, 164.81, 164.81, 146.83, 130.81], lead: [440, 0, 523.25, 587.33, 659.25, 587.33, 523.25, 392] },
+                    { tempoMs: 132, bass: [98, 98, 116.54, 130.81, 146.83, 130.81, 116.54, 98], lead: [392, 466.16, 523.25, 587.33, 698.46, 587.33, 523.25, 466.16] },
+                    { tempoMs: 120, bass: [82.41, 82.41, 98, 110, 123.47, 110, 98, 82.41], lead: [329.63, 392, 493.88, 659.25, 587.33, 493.88, 392, 329.63] },
+                    { tempoMs: 115, bass: [73.42, 73.42, 87.31, 98, 110, 98, 87.31, 73.42], lead: [293.66, 349.23, 440, 587.33, 523.25, 440, 349.23, 293.66] },
+                    { tempoMs: 110, bass: [65.41, 65.41, 77.78, 87.31, 98, 87.31, 77.78, 65.41], lead: [261.63, 311.13, 392, 523.25, 466.16, 392, 311.13, 261.63] },
+                    { tempoMs: 104, bass: [55, 55, 65.41, 73.42, 82.41, 73.42, 65.41, 55], lead: [220, 261.63, 329.63, 440, 392, 329.63, 261.63, 220] }
+                ];
+
+                const track = tracks[trackIndex % tracks.length];
+
+                this.musicTimer = setInterval(() => {
+                    if (this.muted || gameState.mode !== 'PLAYING') return;
+                    const now = this.ctx.currentTime;
+                    const idx = this.step % 8;
+
+                    const bassFreq = track.bass[idx];
+                    if (bassFreq > 0) {
+                        const bOsc = this.ctx.createOscillator();
+                        const bGain = this.ctx.createGain();
+                        bOsc.type = 'sawtooth';
+                        bOsc.frequency.setValueAtTime(bassFreq, now);
+
+                        const filter = this.ctx.createBiquadFilter();
+                        filter.type = 'lowpass';
+                        filter.frequency.setValueAtTime(420, now);
+
+                        bGain.gain.setValueAtTime(0.08, now);
+                        bGain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+
+                        bOsc.connect(filter);
+                        filter.connect(bGain);
+                        bGain.connect(this.ctx.destination);
+                        bOsc.start(now);
+                        bOsc.stop(now + 0.13);
+                    }
+
+                    const leadFreq = track.lead[idx];
+                    if (leadFreq > 0 && (this.step % 2 === 0 || this.step % 3 === 0)) {
+                        const lOsc = this.ctx.createOscillator();
+                        const lGain = this.ctx.createGain();
+                        lOsc.type = 'square';
+                        lOsc.frequency.setValueAtTime(leadFreq, now);
+
+                        lGain.gain.setValueAtTime(0.04, now);
+                        lGain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+
+                        lOsc.connect(lGain);
+                        lGain.connect(this.ctx.destination);
+                        lOsc.start(now);
+                        lOsc.stop(now + 0.11);
+                    }
+
+                    this.step++;
+                }, track.tempoMs);
+            }
+
+            stopMusic() {
+                if (this.musicTimer) {
+                    clearInterval(this.musicTimer);
+                    this.musicTimer = null;
+                }
+            }
+        }
+
+        const sound = new NeonSoundEngine();
+
+        // --- 2. SPELKONSTANTER & FÄRGTEMAN ---
+        const TILE = 44; // En rutstorlek i pixlar
+        const GRAVITY = 2850;
+        const JUMP_VELOCITY = -790;
+        const PAD_VELOCITY = -1140;
+        const PINK_PAD_VELOCITY = -790;
+        const ORB_VELOCITY = -820;
+        const PINK_ORB_VELOCITY = -575;
+        const CEILING_TILES = 9.5; // Tak för Ship & Wave
+
+        const THEME_PRESETS = [
+            { bgTop: '#071026', bgBottom: '#0d2247', ground: '#0a1936', accent: '#00f5d4', blockFill: '#112a54', blockBorder: '#00bbf9' },
+            { bgTop: '#160929', bgBottom: '#2d1154', ground: '#1f0b3b', accent: '#f15bb5', blockFill: '#341363', blockBorder: '#ff47b6' },
+            { bgTop: '#240712', bgBottom: '#4a0d22', ground: '#330817', accent: '#ff5400', blockFill: '#541126', blockBorder: '#ffbd00' },
+            { bgTop: '#1f1605', bgBottom: '#422e0a', ground: '#2e2007', accent: '#fee440', blockFill: '#4d360d', blockBorder: '#ff9e00' },
+            { bgTop: '#062118', bgBottom: '#0c4230', ground: '#082b20', accent: '#10b981', blockFill: '#11543d', blockBorder: '#34d399' }
+        ];
+
+        const CUBE_COLORS = [
+            { id: 'cyan', name: 'Neon Cyan', primary: '#00f5d4', secondary: '#00bbf9', glow: 'rgba(0, 245, 212, 0.7)' },
+            { id: 'magenta', name: 'Cyber Pink', primary: '#ff2a85', secondary: '#9b5de5', glow: 'rgba(255, 42, 133, 0.7)' },
+            { id: 'gold', name: 'Solar Gold', primary: '#fee440', secondary: '#ff9e00', glow: 'rgba(254, 228, 64, 0.7)' },
+            { id: 'lime', name: 'Toxic Lime', primary: '#38b000', secondary: '#9ef01a', glow: 'rgba(158, 240, 26, 0.7)' },
+            { id: 'crimson', name: 'Laser Red', primary: '#ff0054', secondary: '#ff5400', glow: 'rgba(255, 0, 84, 0.7)' },
+            { id: 'violet', name: 'Ultra Violet', primary: '#8338ec', secondary: '#3a86ff', glow: 'rgba(131, 56, 236, 0.7)' }
+        ];
+
+        const CUBE_SKINS = [
+            { id: 'classic', label: 'Klassisk' },
+            { id: 'core', label: 'Kärna' },
+            { id: 'visor', label: 'Cyborg' },
+            { id: 'star', label: 'Stjärna' }
+        ];
+
+        // --- 3. BANBYGGARE & DE 6 LÅNGA NIVÅERNA (MED CUBE, SHIP & WAVE) ---
+        function appendPattern(target, offsetX, items) {
+            for (const item of items) {
+                target.push({ ...item, x: item.x + offsetX });
+            }
+        }
+
+        function enforcePortalWalls(obstacles) {
+            const extra = [];
+            for (const obs of obstacles) {
+                if (obs.type === 'portal_cube' || obs.type === 'portal_ship' || obs.type === 'portal_wave') {
+                    const topY = (obs.y || 0) + 3;
+                    if (topY < 10) {
+                        extra.push({
+                            type: 'block',
+                            x: obs.x,
+                            y: topY,
+                            w: 1,
+                            h: 10 - topY
+                        });
+                    }
+                }
+            }
+            return obstacles.concat(extra);
+        }
+
+        function buildLevel1() {
+            const obs = [];
+            // Fas 1: Cube-uppvärmning (0 - 148)
+            appendPattern(obs, 0, [
+                { type: 'spike', x: 18, y: 0 },
+                { type: 'spike', x: 32, y: 0 },
+                { type: 'spike', x: 33, y: 0 },
+                { type: 'block', x: 46, y: 0, w: 4, h: 1 },
+                { type: 'spike', x: 54, y: 0 },
+                { type: 'block', x: 60, y: 0, w: 3, h: 1 },
+                { type: 'block', x: 66, y: 1, w: 4, h: 1 },
+                { type: 'spike', x: 75, y: 0 },
+                { type: 'spike', x: 76, y: 0 },
+                { type: 'pad', x: 86, y: 0 },
+                { type: 'block', x: 92, y: 2, w: 6, h: 1 },
+                { type: 'spike', x: 95, y: 3 },
+                { type: 'orb', x: 103, y: 2 },
+                { type: 'block', x: 109, y: 2, w: 5, h: 1 },
+                { type: 'spike', x: 118, y: 0 },
+                { type: 'spike', x: 119, y: 0 },
+                { type: 'block', x: 128, y: 0, w: 5, h: 1 },
+                { type: 'block', x: 135, y: 1, w: 5, h: 1 }
+            ]);
+            // Fas 2: Fler plattformar & hopp (148 - 305)
+            appendPattern(obs, 148, [
+                { type: 'spike', x: 10, y: 0 },
+                { type: 'block', x: 18, y: 0, w: 4, h: 1 },
+                { type: 'spike', x: 26, y: 0 },
+                { type: 'spike', x: 27, y: 0 },
+                { type: 'block', x: 34, y: 1, w: 5, h: 1 },
+                { type: 'orb', x: 43, y: 2 },
+                { type: 'block', x: 49, y: 3, w: 6, h: 1 },
+                { type: 'spike', x: 52, y: 4 },
+                { type: 'block', x: 60, y: 1, w: 5, h: 1 },
+                { type: 'pad', x: 69, y: 0 },
+                { type: 'block', x: 75, y: 2, w: 7, h: 1 },
+                { type: 'spike', x: 87, y: 0 },
+                { type: 'spike', x: 88, y: 0 },
+                { type: 'block', x: 96, y: 0, w: 8, h: 2 },
+                { type: 'pad', x: 103, y: 2 },
+                { type: 'block', x: 109, y: 0, w: 7, h: 3 },
+                { type: 'orb', x: 120, y: 4 },
+                { type: 'block', x: 126, y: 4, w: 6, h: 1 },
+                { type: 'spike', x: 138, y: 0 },
+                { type: 'spike', x: 139, y: 0 }
+            ]);
+            // Fas 3: SHIP-PORTAL! Flygsektion (305 - 462)
+            appendPattern(obs, 305, [
+                { type: 'portal_ship', x: 2, y: 0 },
+                { type: 'block', x: 16, y: 0, w: 6, h: 2 },
+                { type: 'block', x: 28, y: 6, w: 6, h: 3 },
+                { type: 'block', x: 42, y: 0, w: 7, h: 3 },
+                { type: 'block', x: 56, y: 5, w: 7, h: 4 },
+                { type: 'block', x: 70, y: 0, w: 6, h: 2 },
+                { type: 'block', x: 70, y: 7, w: 6, h: 2 },
+                { type: 'block', x: 86, y: 2, w: 8, h: 2 },
+                { type: 'block', x: 102, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 115, y: 6, w: 7, h: 3 },
+                { type: 'block', x: 130, y: 0, w: 6, h: 2 },
+                { type: 'block', x: 130, y: 7, w: 6, h: 2 },
+                { type: 'portal_cube', x: 148, y: 0 }
+            ]);
+            // Fas 4: Episk Cube-final (462 - 610)
+            appendPattern(obs, 462, [
+                { type: 'spike', x: 12, y: 0 },
+                { type: 'spike', x: 13, y: 0 },
+                { type: 'block', x: 20, y: 0, w: 5, h: 1 },
+                { type: 'orb', x: 29, y: 2 },
+                { type: 'block', x: 35, y: 2, w: 6, h: 1 },
+                { type: 'spike', x: 38, y: 3 },
+                { type: 'pad', x: 46, y: 0 },
+                { type: 'block', x: 52, y: 3, w: 7, h: 1 },
+                { type: 'spike', x: 64, y: 0 },
+                { type: 'spike', x: 65, y: 0 },
+                { type: 'block', x: 73, y: 0, w: 4, h: 1 },
+                { type: 'block', x: 79, y: 1, w: 4, h: 1 },
+                { type: 'block', x: 85, y: 2, w: 4, h: 1 },
+                { type: 'pad', x: 88, y: 3 },
+                { type: 'block', x: 94, y: 0, w: 8, h: 3 },
+                { type: 'spike', x: 108, y: 0 },
+                { type: 'spike', x: 109, y: 0 },
+                { type: 'orb', x: 116, y: 2 },
+                { type: 'block', x: 122, y: 2, w: 6, h: 1 }
+            ]);
+            return enforcePortalWalls(obs);
+        }
+
+        function buildLevel2() {
+            const obs = [];
+            // Fas 1: Snabb Cube (0 - 166)
+            appendPattern(obs, 0, [
+                { type: 'spike', x: 16, y: 0 },
+                { type: 'spike', x: 17, y: 0 },
+                { type: 'block', x: 24, y: 0, w: 4, h: 1 },
+                { type: 'orb', x: 32, y: 2 },
+                { type: 'block', x: 38, y: 2, w: 5, h: 1 },
+                { type: 'spike', x: 41, y: 3 },
+                { type: 'pad', x: 49, y: 0 },
+                { type: 'block', x: 55, y: 2, w: 6, h: 1 },
+                { type: 'spike', x: 66, y: 0 },
+                { type: 'spike', x: 67, y: 0 },
+                { type: 'block', x: 74, y: 0, w: 4, h: 1 },
+                { type: 'block', x: 80, y: 1, w: 4, h: 1 },
+                { type: 'pad', x: 88, y: 0 },
+                { type: 'block', x: 94, y: 0, w: 8, h: 3 },
+                { type: 'orb', x: 106, y: 4 },
+                { type: 'block', x: 112, y: 4, w: 6, h: 1 },
+                { type: 'spike', x: 124, y: 0 },
+                { type: 'spike', x: 125, y: 0 },
+                { type: 'block', x: 133, y: 0, w: 5, h: 1 },
+                { type: 'spike', x: 143, y: 0 },
+                { type: 'spike', x: 144, y: 0 }
+            ]);
+            // Fas 2: Orb-kombinationer & katapulter (166 - 332)
+            appendPattern(obs, 166, [
+                { type: 'block', x: 8, y: 0, w: 6, h: 1 },
+                { type: 'spike', x: 11, y: 1 },
+                { type: 'orb', x: 19, y: 2 },
+                { type: 'block', x: 25, y: 2, w: 6, h: 1 },
+                { type: 'orb', x: 35, y: 3 },
+                { type: 'block', x: 41, y: 4, w: 7, h: 1 },
+                { type: 'spike', x: 54, y: 0 },
+                { type: 'spike', x: 55, y: 0 },
+                { type: 'pad', x: 62, y: 0 },
+                { type: 'block', x: 68, y: 2, w: 10, h: 2 },
+                { type: 'pad', x: 77, y: 4 },
+                { type: 'block', x: 83, y: 0, w: 7, h: 3 },
+                { type: 'spike', x: 96, y: 0 },
+                { type: 'spike', x: 97, y: 0 },
+                { type: 'block', x: 105, y: 0, w: 5, h: 1 },
+                { type: 'orb', x: 114, y: 2 },
+                { type: 'block', x: 120, y: 2, w: 5, h: 1 },
+                { type: 'spike', x: 132, y: 0 },
+                { type: 'spike', x: 133, y: 0 }
+            ]);
+            // Fas 3: WAVE-PORTAL! Sicksack-korridorer (332 - 510)
+            appendPattern(obs, 332, [
+                { type: 'portal_wave', x: 2, y: 0 },
+                { type: 'block', x: 16, y: 0, w: 6, h: 2 },
+                { type: 'block', x: 28, y: 6, w: 6, h: 3 },
+                { type: 'block', x: 40, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 52, y: 5, w: 6, h: 4 },
+                { type: 'block', x: 66, y: 0, w: 8, h: 2 },
+                { type: 'block', x: 66, y: 7, w: 8, h: 2 },
+                { type: 'block', x: 82, y: 3, w: 6, h: 2 },
+                { type: 'block', x: 96, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 108, y: 6, w: 6, h: 3 },
+                { type: 'block', x: 122, y: 0, w: 8, h: 2 },
+                { type: 'block', x: 122, y: 7, w: 8, h: 2 },
+                { type: 'portal_cube', x: 145, y: 0 }
+            ]);
+            // Fas 4: Snabb avslutning (510 - 675)
+            appendPattern(obs, 510, [
+                { type: 'spike', x: 12, y: 0 },
+                { type: 'spike', x: 13, y: 0 },
+                { type: 'block', x: 20, y: 0, w: 5, h: 1 },
+                { type: 'pad', x: 29, y: 0 },
+                { type: 'block', x: 35, y: 2, w: 6, h: 1 },
+                { type: 'orb', x: 45, y: 3 },
+                { type: 'block', x: 51, y: 4, w: 6, h: 1 },
+                { type: 'spike', x: 64, y: 0 },
+                { type: 'spike', x: 65, y: 0 },
+                { type: 'block', x: 73, y: 0, w: 6, h: 1 },
+                { type: 'spike', x: 76, y: 1 },
+                { type: 'orb', x: 84, y: 2 },
+                { type: 'block', x: 90, y: 2, w: 6, h: 1 },
+                { type: 'spike', x: 104, y: 0 },
+                { type: 'spike', x: 105, y: 0 },
+                { type: 'pad', x: 112, y: 0 },
+                { type: 'block', x: 118, y: 2, w: 8, h: 1 }
+            ]);
+            return enforcePortalWalls(obs);
+        }
+
+        function buildLevel3() {
+            const obs = [];
+            // Fas 1: LaserHoppet - Intensiv Cube (0 - 190)
+            appendPattern(obs, 0, [
+                { type: 'spike', x: 15, y: 0 },
+                { type: 'spike', x: 16, y: 0 },
+                { type: 'block', x: 23, y: 0, w: 4, h: 1 },
+                { type: 'spike', x: 31, y: 0 },
+                { type: 'spike', x: 32, y: 0 },
+                { type: 'orb', x: 38, y: 2 },
+                { type: 'block', x: 44, y: 2, w: 5, h: 1 },
+                { type: 'spike', x: 47, y: 3 },
+                { type: 'pad', x: 54, y: 0 },
+                { type: 'block', x: 60, y: 2, w: 7, h: 1 },
+                { type: 'orb', x: 71, y: 3 },
+                { type: 'block', x: 77, y: 4, w: 6, h: 1 },
+                { type: 'spike', x: 90, y: 0 },
+                { type: 'spike', x: 91, y: 0 },
+                { type: 'block', x: 99, y: 0, w: 8, h: 2 },
+                { type: 'spike', x: 103, y: 2 },
+                { type: 'pad', x: 112, y: 0 },
+                { type: 'block', x: 118, y: 2, w: 6, h: 1 },
+                { type: 'spike', x: 130, y: 0 },
+                { type: 'spike', x: 131, y: 0 },
+                { type: 'block', x: 139, y: 0, w: 5, h: 1 },
+                { type: 'orb', x: 148, y: 2 },
+                { type: 'block', x: 154, y: 2, w: 6, h: 1 }
+            ]);
+            // Fas 2: SHIP-PORTAL! Smala passager (190 - 385)
+            appendPattern(obs, 190, [
+                { type: 'portal_ship', x: 2, y: 0 },
+                { type: 'block', x: 15, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 27, y: 6, w: 6, h: 3 },
+                { type: 'block', x: 39, y: 0, w: 7, h: 2 },
+                { type: 'block', x: 39, y: 7, w: 7, h: 2 },
+                { type: 'block', x: 54, y: 3, w: 6, h: 2 },
+                { type: 'block', x: 68, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 80, y: 5, w: 6, h: 4 },
+                { type: 'block', x: 94, y: 0, w: 8, h: 2 },
+                { type: 'block', x: 94, y: 7, w: 8, h: 2 },
+                { type: 'block', x: 110, y: 2, w: 6, h: 2 },
+                { type: 'block', x: 124, y: 5, w: 6, h: 4 },
+                { type: 'block', x: 138, y: 0, w: 6, h: 3 },
+                { type: 'portal_wave', x: 154, y: 0 }
+            ]);
+            // Fas 3: WAVE-PORTAL direkt efter Ship! (385 - 575)
+            appendPattern(obs, 385, [
+                { type: 'block', x: 14, y: 0, w: 6, h: 2 },
+                { type: 'block', x: 26, y: 6, w: 6, h: 3 },
+                { type: 'block', x: 38, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 50, y: 5, w: 6, h: 4 },
+                { type: 'block', x: 64, y: 0, w: 7, h: 2 },
+                { type: 'block', x: 64, y: 7, w: 7, h: 2 },
+                { type: 'block', x: 80, y: 3, w: 6, h: 2 },
+                { type: 'block', x: 94, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 106, y: 6, w: 6, h: 3 },
+                { type: 'block', x: 120, y: 0, w: 8, h: 2 },
+                { type: 'block', x: 120, y: 7, w: 8, h: 2 },
+                { type: 'portal_cube', x: 144, y: 0 }
+            ]);
+            // Fas 4: Final Cube (575 - 760)
+            appendPattern(obs, 575, [
+                { type: 'spike', x: 12, y: 0 },
+                { type: 'spike', x: 13, y: 0 },
+                { type: 'block', x: 20, y: 0, w: 5, h: 1 },
+                { type: 'orb', x: 29, y: 2 },
+                { type: 'block', x: 35, y: 2, w: 6, h: 1 },
+                { type: 'pad', x: 46, y: 0 },
+                { type: 'block', x: 52, y: 2, w: 7, h: 1 },
+                { type: 'spike', x: 64, y: 0 },
+                { type: 'spike', x: 65, y: 0 },
+                { type: 'block', x: 73, y: 0, w: 5, h: 1 },
+                { type: 'orb', x: 82, y: 2 },
+                { type: 'block', x: 88, y: 3, w: 6, h: 1 },
+                { type: 'spike', x: 100, y: 0 },
+                { type: 'spike', x: 101, y: 0 },
+                { type: 'pad', x: 108, y: 0 },
+                { type: 'block', x: 114, y: 2, w: 8, h: 1 }
+            ]);
+            return enforcePortalWalls(obs);
+        }
+
+        function buildLevel4() {
+            const obs = [];
+            appendPattern(obs, 0, [
+                { type: 'spike', x: 14, y: 0 },
+                { type: 'spike', x: 15, y: 0 },
+                { type: 'orb', x: 21, y: 2 },
+                { type: 'block', x: 27, y: 2, w: 5, h: 1 },
+                { type: 'spike', x: 30, y: 3 },
+                { type: 'pad', x: 37, y: 0 },
+                { type: 'block', x: 43, y: 2, w: 6, h: 1 },
+                { type: 'orb', x: 53, y: 3 },
+                { type: 'block', x: 59, y: 4, w: 6, h: 1 },
+                { type: 'spike', x: 72, y: 0 },
+                { type: 'spike', x: 73, y: 0 },
+                { type: 'block', x: 81, y: 0, w: 6, h: 2 },
+                { type: 'orb', x: 91, y: 3 },
+                { type: 'block', x: 97, y: 3, w: 6, h: 1 },
+                { type: 'spike', x: 110, y: 0 },
+                { type: 'spike', x: 111, y: 0 },
+                { type: 'pad', x: 118, y: 0 },
+                { type: 'block', x: 124, y: 2, w: 7, h: 1 },
+                { type: 'portal_wave', x: 142, y: 0 }
+            ]);
+            appendPattern(obs, 146, [
+                { type: 'block', x: 14, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 26, y: 6, w: 6, h: 3 },
+                { type: 'block', x: 38, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 50, y: 5, w: 6, h: 4 },
+                { type: 'block', x: 64, y: 0, w: 8, h: 2 },
+                { type: 'block', x: 64, y: 7, w: 8, h: 2 },
+                { type: 'block', x: 80, y: 3, w: 7, h: 2 },
+                { type: 'block', x: 95, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 107, y: 6, w: 6, h: 3 },
+                { type: 'portal_ship', x: 125, y: 0 }
+            ]);
+            appendPattern(obs, 275, [
+                { type: 'block', x: 15, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 28, y: 5, w: 6, h: 4 },
+                { type: 'block', x: 42, y: 0, w: 8, h: 2 },
+                { type: 'block', x: 42, y: 7, w: 8, h: 2 },
+                { type: 'block', x: 58, y: 3, w: 6, h: 2 },
+                { type: 'block', x: 72, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 85, y: 6, w: 6, h: 3 },
+                { type: 'portal_cube', x: 104, y: 0 }
+            ]);
+            appendPattern(obs, 385, [
+                { type: 'spike', x: 12, y: 0 },
+                { type: 'spike', x: 13, y: 0 },
+                { type: 'orb', x: 19, y: 2 },
+                { type: 'block', x: 25, y: 2, w: 5, h: 1 },
+                { type: 'pad', x: 35, y: 0 },
+                { type: 'block', x: 41, y: 2, w: 6, h: 1 },
+                { type: 'spike', x: 53, y: 0 },
+                { type: 'spike', x: 54, y: 0 },
+                { type: 'block', x: 62, y: 0, w: 5, h: 1 },
+                { type: 'orb', x: 71, y: 2 },
+                { type: 'block', x: 77, y: 3, w: 6, h: 1 },
+                { type: 'spike', x: 90, y: 0 },
+                { type: 'spike', x: 91, y: 0 },
+                { type: 'pad', x: 98, y: 0 },
+                { type: 'block', x: 104, y: 2, w: 8, h: 1 },
+                { type: 'spike', x: 118, y: 0 },
+                { type: 'spike', x: 119, y: 0 },
+                { type: 'block', x: 127, y: 0, w: 6, h: 1 }
+            ]);
+            return enforcePortalWalls(obs);
+        }
+
+        function buildLevel5() {
+            const obs = [];
+            appendPattern(obs, 0, [
+                { type: 'portal_ship', x: 6, y: 0 },
+                { type: 'block', x: 20, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 33, y: 6, w: 6, h: 3 },
+                { type: 'block', x: 46, y: 0, w: 8, h: 2 },
+                { type: 'block', x: 46, y: 7, w: 8, h: 2 },
+                { type: 'block', x: 62, y: 3, w: 6, h: 2 },
+                { type: 'block', x: 76, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 89, y: 5, w: 6, h: 4 },
+                { type: 'block', x: 104, y: 0, w: 8, h: 2 },
+                { type: 'block', x: 104, y: 7, w: 8, h: 2 },
+                { type: 'portal_cube', x: 124, y: 0 }
+            ]);
+            appendPattern(obs, 130, [
+                { type: 'spike', x: 12, y: 0 },
+                { type: 'spike', x: 13, y: 0 },
+                { type: 'orb', x: 19, y: 2 },
+                { type: 'block', x: 25, y: 2, w: 5, h: 1 },
+                { type: 'spike', x: 28, y: 3 },
+                { type: 'pad', x: 35, y: 0 },
+                { type: 'block', x: 41, y: 2, w: 6, h: 1 },
+                { type: 'orb', x: 51, y: 3 },
+                { type: 'block', x: 57, y: 4, w: 6, h: 1 },
+                { type: 'spike', x: 70, y: 0 },
+                { type: 'spike', x: 71, y: 0 },
+                { type: 'block', x: 79, y: 0, w: 6, h: 2 },
+                { type: 'orb', x: 89, y: 3 },
+                { type: 'block', x: 95, y: 3, w: 6, h: 1 },
+                { type: 'portal_wave', x: 112, y: 0 }
+            ]);
+            appendPattern(obs, 246, [
+                { type: 'block', x: 14, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 26, y: 6, w: 6, h: 3 },
+                { type: 'block', x: 38, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 50, y: 5, w: 6, h: 4 },
+                { type: 'block', x: 64, y: 0, w: 8, h: 2 },
+                { type: 'block', x: 64, y: 7, w: 8, h: 2 },
+                { type: 'block', x: 80, y: 3, w: 7, h: 2 },
+                { type: 'block', x: 95, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 107, y: 6, w: 6, h: 3 },
+                { type: 'portal_cube', x: 125, y: 0 }
+            ]);
+            appendPattern(obs, 376, [
+                { type: 'spike', x: 12, y: 0 },
+                { type: 'spike', x: 13, y: 0 },
+                { type: 'block', x: 20, y: 0, w: 5, h: 1 },
+                { type: 'orb', x: 29, y: 2 },
+                { type: 'block', x: 35, y: 2, w: 6, h: 1 },
+                { type: 'pad', x: 46, y: 0 },
+                { type: 'block', x: 52, y: 2, w: 7, h: 1 },
+                { type: 'spike', x: 64, y: 0 },
+                { type: 'spike', x: 65, y: 0 },
+                { type: 'block', x: 73, y: 0, w: 5, h: 1 },
+                { type: 'orb', x: 82, y: 2 },
+                { type: 'block', x: 88, y: 3, w: 6, h: 1 },
+                { type: 'spike', x: 100, y: 0 },
+                { type: 'spike', x: 101, y: 0 },
+                { type: 'pad', x: 108, y: 0 },
+                { type: 'block', x: 114, y: 2, w: 8, h: 1 },
+                { type: 'spike', x: 128, y: 0 },
+                { type: 'spike', x: 129, y: 0 },
+                { type: 'block', x: 137, y: 0, w: 6, h: 1 }
+            ]);
+            return enforcePortalWalls(obs);
+        }
+
+        function buildLevel6() {
+            const obs = [];
+            appendPattern(obs, 0, [
+                { type: 'spike', x: 13, y: 0 },
+                { type: 'spike', x: 14, y: 0 },
+                { type: 'orb', x: 20, y: 2 },
+                { type: 'block', x: 26, y: 2, w: 5, h: 1 },
+                { type: 'spike', x: 29, y: 3 },
+                { type: 'orb', x: 35, y: 4 },
+                { type: 'block', x: 41, y: 4, w: 5, h: 1 },
+                { type: 'spike', x: 52, y: 0 },
+                { type: 'spike', x: 53, y: 0 },
+                { type: 'pad', x: 60, y: 0 },
+                { type: 'block', x: 66, y: 2, w: 6, h: 1 },
+                { type: 'orb', x: 76, y: 3 },
+                { type: 'block', x: 82, y: 4, w: 6, h: 1 },
+                { type: 'spike', x: 94, y: 0 },
+                { type: 'spike', x: 95, y: 0 },
+                { type: 'block', x: 103, y: 0, w: 6, h: 2 },
+                { type: 'orb', x: 113, y: 3 },
+                { type: 'block', x: 119, y: 3, w: 6, h: 1 },
+                { type: 'portal_wave', x: 135, y: 0 }
+            ]);
+            appendPattern(obs, 138, [
+                { type: 'block', x: 14, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 25, y: 6, w: 6, h: 3 },
+                { type: 'block', x: 36, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 47, y: 5, w: 6, h: 4 },
+                { type: 'block', x: 60, y: 0, w: 7, h: 2 },
+                { type: 'block', x: 60, y: 7, w: 7, h: 2 },
+                { type: 'block', x: 75, y: 3, w: 6, h: 2 },
+                { type: 'block', x: 89, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 100, y: 6, w: 6, h: 3 },
+                { type: 'portal_ship', x: 116, y: 0 }
+            ]);
+            appendPattern(obs, 258, [
+                { type: 'block', x: 14, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 26, y: 5, w: 6, h: 4 },
+                { type: 'block', x: 39, y: 0, w: 8, h: 2 },
+                { type: 'block', x: 39, y: 7, w: 8, h: 2 },
+                { type: 'block', x: 55, y: 3, w: 6, h: 2 },
+                { type: 'block', x: 69, y: 0, w: 6, h: 3 },
+                { type: 'block', x: 81, y: 6, w: 6, h: 3 },
+                { type: 'portal_cube', x: 98, y: 0 }
+            ]);
+            appendPattern(obs, 360, [
+                { type: 'spike', x: 12, y: 0 },
+                { type: 'spike', x: 13, y: 0 },
+                { type: 'orb', x: 19, y: 2 },
+                { type: 'block', x: 25, y: 2, w: 5, h: 1 },
+                { type: 'pad', x: 35, y: 0 },
+                { type: 'block', x: 41, y: 2, w: 6, h: 1 },
+                { type: 'orb', x: 51, y: 3 },
+                { type: 'block', x: 57, y: 4, w: 6, h: 1 },
+                { type: 'spike', x: 70, y: 0 },
+                { type: 'spike', x: 71, y: 0 },
+                { type: 'block', x: 79, y: 0, w: 5, h: 1 },
+                { type: 'orb', x: 88, y: 2 },
+                { type: 'block', x: 94, y: 3, w: 6, h: 1 },
+                { type: 'spike', x: 106, y: 0 },
+                { type: 'spike', x: 107, y: 0 },
+                { type: 'pad', x: 114, y: 0 },
+                { type: 'block', x: 120, y: 2, w: 8, h: 1 },
+                { type: 'spike', x: 134, y: 0 },
+                { type: 'spike', x: 135, y: 0 },
+                { type: 'orb', x: 141, y: 2 },
+                { type: 'block', x: 147, y: 2, w: 7, h: 1 }
+            ]);
+            return enforcePortalWalls(obs);
+        }
+
+        const LEVELS = [
+            {
+                id: 0,
+                name: 'Nivå 1: StereoStart',
+                difficulty: 'Lätt',
+                diffColor: 'text-emerald-300 bg-emerald-500/20 border-emerald-400/30',
+                speed: 390,
+                length: 615,
+                theme: THEME_PRESETS[0],
+                obstacles: buildLevel1()
+            },
+            {
+                id: 1,
+                name: 'Nivå 2: NeonPuls',
+                difficulty: 'Medel',
+                diffColor: 'text-sky-300 bg-sky-500/20 border-sky-400/30',
+                speed: 445,
+                length: 675,
+                theme: THEME_PRESETS[1],
+                obstacles: buildLevel2()
+            },
+            {
+                id: 2,
+                name: 'Nivå 3: LaserHoppet',
+                difficulty: 'Svår',
+                diffColor: 'text-amber-300 bg-amber-500/20 border-amber-400/30',
+                speed: 485,
+                length: 760,
+                theme: THEME_PRESETS[2],
+                obstacles: buildLevel3()
+            },
+            {
+                id: 3,
+                name: 'Nivå 4: ElChock',
+                difficulty: 'Expert',
+                diffColor: 'text-orange-300 bg-orange-500/20 border-orange-400/30',
+                speed: 510,
+                length: 540,
+                theme: THEME_PRESETS[3],
+                obstacles: buildLevel4()
+            },
+            {
+                id: 4,
+                name: 'Nivå 5: RymdVåg',
+                difficulty: 'Mästare',
+                diffColor: 'text-rose-300 bg-rose-500/20 border-rose-400/30',
+                speed: 528,
+                length: 545,
+                theme: THEME_PRESETS[4],
+                obstacles: buildLevel5()
+            },
+            {
+                id: 5,
+                name: 'Nivå 6: DemonKärna',
+                difficulty: 'Demon',
+                diffColor: 'text-fuchsia-300 bg-fuchsia-500/20 border-fuchsia-400/40',
+                speed: 545,
+                length: 545,
+                theme: THEME_PRESETS[1],
+                obstacles: buildLevel6()
+            }
+        ];
+
+        // --- 4. LAGRING (LOCALSTORAGE) ---
+        const STORAGE_KEY = 'geodash_neon_save_v3';
+
+        function loadSaveData() {
+            const defaultData = {
+                colorId: 'cyan',
+                skinId: 'classic',
+                muted: false,
+                bestProgress: [0, 0, 0, 0, 0, 0],
+                practiceBestProgress: [0, 0, 0, 0, 0, 0],
+                completed: [false, false, false, false, false, false],
+                endlessBest: 0,
+                customLevels: []
+            };
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return defaultData;
+                const parsed = JSON.parse(raw);
+                const merged = { ...defaultData, ...parsed };
+                while (merged.bestProgress.length < LEVELS.length) merged.bestProgress.push(0);
+                while (merged.practiceBestProgress.length < LEVELS.length) merged.practiceBestProgress.push(0);
+                while (merged.completed.length < LEVELS.length) merged.completed.push(false);
+                if (!Array.isArray(merged.customLevels)) merged.customLevels = [];
+                return merged;
+            } catch (e) {
+                return defaultData;
+            }
+        }
+
+        function writeSaveData(data) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } catch (e) {}
+        }
+
+        let saveData = loadSaveData();
+        sound.setMuted(saveData.muted);
+
+        // --- 5. SPELTILLSTÅND, SPELARE & BANSKAPPARE ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let viewWidth = window.innerWidth;
+        let viewHeight = window.innerHeight;
+
+        const gameState = {
+            mode: 'MENU', // MENU, PLAYING, PAUSED, CRASHING, VICTORY, EDITOR
+            levelIndex: 0,
+            isEndless: false,
+            isCustomTest: false,
+            activeCustomLevel: null,
+            practiceMode: false,
+            checkpoints: [],
+            autoCheckpointTimer: 0,
+            spawnGraceTimer: 0,
+            consecutiveFastDeaths: 0,
+            attempt: 1,
+            cameraX: 0,
+            cameraYOffset: 0,
+            groundY: 0,
+            currentSpeed: 390,
+            obstacles: [],
+            levelLengthTiles: 615,
+            endlessNextSpawnX: 25,
+            endlessDistance: 0,
+            shakeTimer: 0,
+            shakeIntensity: 0,
+            bgGridOffset: 0
+        };
+
+        const editorState = {
+            tool: 'block',
+            scrollX: 0,
+            scrollY: 2,
+            obstacles: [],
+            name: 'Min Egen Bana',
+            speed: 445,
+            themeIdx: 0,
+            length: 120,
+            editingCustomId: null,
+            isDragging: false,
+            lastPaintKey: '',
+            panStartMouseX: 0,
+            panStartMouseY: 0,
+            panStartScrollX: 0,
+            panStartScrollY: 2,
+            hoverTileX: -1,
+            hoverTileY: -1
+        };
+
+        const player = {
+            x: 130,
+            y: 0,
+            vy: 0,
+            size: TILE * 0.92,
+            rotation: 0,
+            grounded: true,
+            gravityDir: 1,
+            vehicle: 'cube', // 'cube' | 'ship' | 'wave'
+            jumpHeld: false,
+            jumpBufferTimer: 0,
+            coyoteTimer: 0,
+            trail: [],
+            waveTrail: [],
+            usedOrbs: new Set(),
+            usedPads: new Set()
+        };
+
+        let particles = [];
+
+        function resizeCanvas() {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            viewWidth = window.innerWidth;
+            viewHeight = window.innerHeight;
+            canvas.width = Math.floor(viewWidth * dpr);
+            canvas.height = Math.floor(viewHeight * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            const oldGround = gameState.groundY;
+            gameState.groundY = Math.round(viewHeight * 0.76);
+            player.x = Math.min(160, Math.max(90, viewWidth * 0.16));
+
+            if (oldGround > 0 && gameState.mode === 'PLAYING') {
+                const diff = gameState.groundY - oldGround;
+                player.y += diff;
+            } else if (gameState.mode !== 'PLAYING') {
+                player.y = gameState.groundY - player.size;
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- 6. HJÄLPFUNKTIONER & TOAST ---
+        let toastTimeout = null;
+        function showToast(msg) {
+            const box = document.getElementById('toastBox');
+            const text = document.getElementById('toastText');
+            text.textContent = msg;
+            box.classList.remove('opacity-0');
+            box.classList.add('opacity-100');
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                box.classList.remove('opacity-100');
+                box.classList.add('opacity-0');
+            }, 2200);
+        }
+
+        function spawnBurst(x, y, color, count = 18) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 110 + Math.random() * 340;
+                particles.push({
+                    x,
+                    y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 60,
+                    size: 4 + Math.random() * 6,
+                    color,
+                    alpha: 1,
+                    life: 0.35 + Math.random() * 0.35
+                });
+            }
+        }
+
+        function updateParticles(dt) {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.vy += 650 * dt;
+                p.life -= dt;
+                p.alpha = Math.max(0, p.life * 1.8);
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        // --- 7. INMATNING (MUS, PEKSKÄRM, TANGENTBORD) ---
+        function onPressAction() {
+            sound.init();
+            player.jumpHeld = true;
+            if (gameState.mode === 'PLAYING') {
+                player.jumpBufferTimer = 0.14;
+                if (player.vehicle === 'cube') {
+                    checkOrbActivation();
+                }
+            }
+        }
+
+        function onReleaseAction() {
+            player.jumpHeld = false;
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (gameState.mode === 'EDITOR') {
+                handleEditorPointerDown(e.clientX, e.clientY, e.button);
+                return;
+            }
+            if (e.button === 0) onPressAction();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (gameState.mode === 'EDITOR') {
+                handleEditorPointerMove(e.clientX, e.clientY);
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (gameState.mode === 'EDITOR') {
+                editorState.isDragging = false;
+                editorState.lastPaintKey = '';
+                return;
+            }
+            onReleaseAction();
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameState.mode === 'EDITOR' && e.touches.length > 0) {
+                const t = e.touches[0];
+                handleEditorPointerDown(t.clientX, t.clientY, 0);
+                return;
+            }
+            onPressAction();
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (gameState.mode === 'EDITOR' && e.touches.length > 0) {
+                e.preventDefault();
+                const t = e.touches[0];
+                handleEditorPointerMove(t.clientX, t.clientY);
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', (e) => {
+            if (gameState.mode === 'EDITOR') {
+                editorState.isDragging = false;
+                editorState.lastPaintKey = '';
+                return;
+            }
+            if (e.touches.length === 0) onReleaseAction();
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT')) {
+                return;
+            }
+
+            if (gameState.mode === 'EDITOR') {
+                if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+                    editorState.scrollX = Math.min(editorState.length, editorState.scrollX + 3);
+                    syncEditorSliders();
+                } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+                    editorState.scrollX = Math.max(0, editorState.scrollX - 3);
+                    syncEditorSliders();
+                } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+                    editorState.scrollY = Math.min(20, editorState.scrollY + 1);
+                    syncEditorSliders();
+                } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+                    editorState.scrollY = Math.max(-4, editorState.scrollY - 1);
+                    syncEditorSliders();
+                } else if (e.code === 'Digit1') selectEditorTool('block');
+                else if (e.code === 'Digit2') selectEditorTool('spike');
+                else if (e.code === 'Digit3') selectEditorTool('pad');
+                else if (e.code === 'Digit4') selectEditorTool('blue_pad');
+                else if (e.code === 'Digit5') selectEditorTool('orb');
+                else if (e.code === 'Digit6') selectEditorTool('blue_orb');
+                else if (e.code === 'Digit7') selectEditorTool('portal_cube');
+                else if (e.code === 'Digit8') selectEditorTool('portal_ship');
+                else if (e.code === 'Digit9') selectEditorTool('portal_wave');
+                else if (e.code === 'Digit0' || e.code === 'Backspace') selectEditorTool('erase');
+                return;
+            }
+
+            if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+                e.preventDefault();
+                if (!e.repeat) onPressAction();
+            } else if (e.code === 'KeyZ' && gameState.mode === 'PLAYING' && gameState.practiceMode) {
+                e.preventDefault();
+                placeCheckpoint(true);
+            } else if (e.code === 'KeyX' && gameState.mode === 'PLAYING' && gameState.practiceMode) {
+                e.preventDefault();
+                removeLastCheckpoint();
+            } else if (e.code === 'Escape' || e.code === 'KeyP') {
+                if (gameState.mode === 'PLAYING') pauseGame();
+                else if (gameState.mode === 'PAUSED') resumeGame();
+            } else if (e.code === 'KeyR' && (gameState.mode === 'PLAYING' || gameState.mode === 'PAUSED')) {
+                restartFromStart();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+                onReleaseAction();
+            }
+        });
+
+        // --- 8. SPELLÄGEN, CHECKPOINTS & NIVÅHANTERING ---
+        function isPositionSafeForCheckpoint(camX, py, vehicle) {
+            const pLeft = camX + player.x + 2;
+            const pRight = pLeft + player.size - 4;
+            const pTop = py + 2;
+            const pBottom = py + player.size - 2;
+            const lookAheadRight = pRight + TILE * 2.2;
+
+            for (const obs of gameState.obstacles) {
+                const ox = obs.x * TILE;
+                const ow = (obs.w || 1) * TILE;
+                const oh = (obs.h || 1) * TILE;
+                const oy = gameState.groundY - obs.y * TILE - oh;
+
+                if (ox > lookAheadRight || ox + ow < pLeft) continue;
+
+                if (obs.type === 'spike') {
+                    const sLeft = ox + ow * 0.2;
+                    const sRight = ox + ow * 0.8;
+                    const sTop = oy + oh * 0.2;
+                    const sBottom = oy + oh;
+                    if (lookAheadRight > sLeft && pLeft < sRight && pBottom > sTop && pTop < sBottom) {
+                        return false;
+                    }
+                } else if (obs.type === 'block') {
+                    if (pRight > ox && pLeft < ox + ow && pBottom > oy && pTop < oy + oh) {
+                        return false;
+                    }
+                    if (vehicle === 'cube' && ox > pRight - 4 && ox < lookAheadRight && oy < pBottom - 6 && oy + oh > pTop + 4) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function placeCheckpoint(manual = false) {
+            if (!gameState.practiceMode || gameState.mode !== 'PLAYING') return;
+            gameState.checkpoints.push({
+                cameraX: gameState.cameraX,
+                y: player.y,
+                vy: player.vy,
+                rotation: player.rotation,
+                grounded: player.grounded,
+                gravityDir: player.gravityDir,
+                vehicle: player.vehicle,
+                usedOrbs: new Set(player.usedOrbs),
+                usedPads: new Set(player.usedPads)
+            });
+            gameState.autoCheckpointTimer = 0;
+            spawnBurst(player.x + player.size * 0.5, player.y + player.size * 0.5 + gameState.cameraYOffset, '#10b981', manual ? 16 : 8);
+            if (manual) showToast(`Checkpoint sparad ◆ (${gameState.checkpoints.length})`);
+        }
+
+        function removeLastCheckpoint() {
+            if (!gameState.practiceMode) return;
+            if (gameState.checkpoints.length > 0) {
+                gameState.checkpoints.pop();
+                showToast(`Senaste checkpoint borttagen (${gameState.checkpoints.length} kvar)`);
+            } else {
+                showToast('Inga checkpoints att ta bort');
+            }
+        }
+
+        function togglePracticeMode() {
+            gameState.practiceMode = !gameState.practiceMode;
+            gameState.checkpoints = [];
+            gameState.autoCheckpointTimer = 0;
+            gameState.consecutiveFastDeaths = 0;
+            updatePracticeUI();
+            if (gameState.mode === 'MENU') buildMenuUI();
+        }
+
+        function updatePracticeUI() {
+            const pBadge = document.getElementById('hudPracticeBadge');
+            const pControls = document.getElementById('practiceControls');
+            const pausePracticeBtn = document.getElementById('togglePracticeInPauseBtn');
+            const removeLastCpPauseBtn = document.getElementById('removeLastCpPauseBtn');
+
+            if (gameState.practiceMode) {
+                pBadge.classList.remove('hidden');
+                pControls.classList.remove('hidden');
+                pausePracticeBtn.textContent = '◆ ÖVNINGSLÄGE: PÅ';
+                pausePracticeBtn.className = 'neon-btn w-full py-3 rounded-2xl font-display font-bold text-slate-950 bg-gradient-to-r from-emerald-300 to-teal-400 cursor-pointer';
+                if (removeLastCpPauseBtn) {
+                    if (gameState.checkpoints.length > 0) removeLastCpPauseBtn.classList.remove('hidden');
+                    else removeLastCpPauseBtn.classList.add('hidden');
+                }
+            } else {
+                pBadge.classList.add('hidden');
+                pControls.classList.add('hidden');
+                pausePracticeBtn.textContent = '◆ ÖVNINGSLÄGE: AV';
+                pausePracticeBtn.className = 'neon-btn w-full py-3 rounded-2xl font-display font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-400/35 cursor-pointer';
+                if (removeLastCpPauseBtn) removeLastCpPauseBtn.classList.add('hidden');
+            }
+        }
+
+        function updateModeBadge() {
+            const badge = document.getElementById('hudModeBadge');
+            badge.classList.remove('hidden');
+            if (player.vehicle === 'ship') {
+                badge.textContent = '🚀 SHIP';
+                badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-display font-bold uppercase tracking-wider bg-pink-500/20 text-pink-300 border border-pink-400/40';
+            } else if (player.vehicle === 'wave') {
+                badge.textContent = '❖ WAVE';
+                badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-display font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-400/40';
+            } else {
+                badge.textContent = '■ CUBE';
+                badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-display font-bold uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-400/30';
+            }
+        }
+
+        function startLevel(levelIndex, isEndless = false) {
+            sound.init();
+            gameState.levelIndex = levelIndex;
+            gameState.isEndless = isEndless;
+            gameState.isCustomTest = false;
+            gameState.activeCustomLevel = null;
+            gameState.attempt = 1;
+            gameState.checkpoints = [];
+            gameState.autoCheckpointTimer = 0;
+
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('editorHud').classList.add('hidden');
+            document.getElementById('victoryModal').classList.add('hidden');
+            document.getElementById('pauseModal').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+
+            const hintEl = document.getElementById('hudHint');
+            hintEl.style.opacity = '1';
+            setTimeout(() => { hintEl.style.opacity = '0'; }, 4000);
+
+            updatePracticeUI();
+            resetAttempt();
+            sound.startMusic(isEndless ? 2 : levelIndex);
+        }
+
+        function startCustomLevel(customLvl, isTestFromEditor = false) {
+            sound.init();
+            gameState.isEndless = false;
+            gameState.isCustomTest = isTestFromEditor;
+            gameState.activeCustomLevel = customLvl;
+            gameState.attempt = 1;
+            gameState.checkpoints = [];
+            gameState.autoCheckpointTimer = 0;
+
+            if (customLvl.docId && typeof window.incrementCommunityPlayCount === 'function') {
+                window.incrementCommunityPlayCount(customLvl.docId);
+            }
+
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('editorHud').classList.add('hidden');
+            document.getElementById('victoryModal').classList.add('hidden');
+            document.getElementById('pauseModal').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+
+            updatePracticeUI();
+            resetAttempt();
+            sound.startMusic((customLvl.themeIdx || 0) % 6);
+        }
+
+        function resetAttempt() {
+            gameState.mode = 'PLAYING';
+            gameState.cameraYOffset = 0;
+            gameState.spawnGraceTimer = 0.22;
+            particles = [];
+            player.trail = [];
+            player.waveTrail = [];
+            player.jumpBufferTimer = 0;
+            player.coyoteTimer = 0;
+
+            if (gameState.practiceMode && gameState.checkpoints.length > 0 && !gameState.isEndless) {
+                const cp = gameState.checkpoints[gameState.checkpoints.length - 1];
+                gameState.cameraX = cp.cameraX;
+                player.y = cp.y;
+                player.vy = cp.vy;
+                player.rotation = cp.rotation;
+                player.grounded = cp.grounded;
+                player.gravityDir = cp.gravityDir ?? 1;
+                player.vehicle = cp.vehicle || 'cube';
+                player.usedOrbs = new Set(cp.usedOrbs);
+                player.usedPads = new Set(cp.usedPads);
+            } else {
+                gameState.cameraX = 0;
+                player.y = gameState.groundY - player.size;
+                player.vy = 0;
+                player.rotation = 0;
+                player.grounded = true;
+                player.gravityDir = 1;
+                player.vehicle = 'cube';
+                player.usedOrbs.clear();
+                player.usedPads.clear();
+            }
+
+            if (gameState.isEndless) {
+                gameState.currentSpeed = 420;
+                gameState.obstacles = [];
+                gameState.endlessNextSpawnX = 22;
+                gameState.endlessDistance = 0;
+                document.getElementById('hudLevelName').textContent = '∞ Endless Mode';
+                for (let i = 0; i < 6; i++) generateEndlessChunk();
+            } else if (gameState.activeCustomLevel) {
+                const cLvl = gameState.activeCustomLevel;
+                gameState.currentSpeed = cLvl.speed || 445;
+                gameState.levelLengthTiles = cLvl.length || 120;
+                gameState.obstacles = JSON.parse(JSON.stringify(cLvl.obstacles));
+                document.getElementById('hudLevelName').textContent = (gameState.isCustomTest ? '🛠️ Test: ' : '★ ') + cLvl.name;
+            } else {
+                const lvl = LEVELS[gameState.levelIndex];
+                gameState.currentSpeed = lvl.speed;
+                gameState.levelLengthTiles = lvl.length;
+                gameState.obstacles = JSON.parse(JSON.stringify(lvl.obstacles));
+                document.getElementById('hudLevelName').textContent = lvl.name;
+            }
+
+            updateModeBadge();
+            updateHUD();
+        }
+
+        function generateEndlessChunk() {
+            const patterns = [
+                [{ type: 'spike', x: 0, y: 0 }],
+                [{ type: 'spike', x: 0, y: 0 }, { type: 'spike', x: 1, y: 0 }],
+                [{ type: 'block', x: 0, y: 0, w: 3, h: 1 }, { type: 'spike', x: 6, y: 0 }],
+                [{ type: 'pad', x: 0, y: 0 }, { type: 'block', x: 5, y: 2, w: 5, h: 1 }],
+                [{ type: 'orb', x: 1, y: 2 }, { type: 'block', x: 6, y: 2, w: 4, h: 1 }],
+                [{ type: 'block', x: 0, y: 0, w: 3, h: 1 }, { type: 'block', x: 5, y: 1, w: 4, h: 1 }]
+            ];
+            const chosen = patterns[Math.floor(Math.random() * patterns.length)];
+            const startX = gameState.endlessNextSpawnX;
+            let maxOffset = 8;
+
+            for (const item of chosen) {
+                gameState.obstacles.push({ ...item, x: startX + item.x });
+                maxOffset = Math.max(maxOffset, item.x + (item.w || 1));
+            }
+            gameState.endlessNextSpawnX = startX + maxOffset + 8 + Math.floor(Math.random() * 5);
+        }
+
+        function pauseGame() {
+            if (gameState.mode !== 'PLAYING') return;
+            gameState.mode = 'PAUSED';
+            sound.stopMusic();
+            const pct = getProgressPercent();
+            document.getElementById('pauseStats').textContent = gameState.isEndless
+                ? `Distans: ${Math.floor(gameState.endlessDistance)}m • Försök ${gameState.attempt}`
+                : `Framsteg: ${pct}% • Försök ${gameState.attempt}`;
+
+            const backEditorBtn = document.getElementById('backToEditorPauseBtn');
+            if (gameState.isCustomTest) backEditorBtn.classList.remove('hidden');
+            else backEditorBtn.classList.add('hidden');
+
+            updatePracticeUI();
+            document.getElementById('pauseModal').classList.remove('hidden');
+        }
+
+        function resumeGame() {
+            if (gameState.mode !== 'PAUSED') return;
+            document.getElementById('pauseModal').classList.add('hidden');
+            gameState.mode = 'PLAYING';
+            lastTimestamp = performance.now();
+            sound.startMusic(gameState.isEndless ? 2 : gameState.levelIndex);
+        }
+
+        function restartFromStart() {
+            document.getElementById('pauseModal').classList.add('hidden');
+            document.getElementById('victoryModal').classList.add('hidden');
+            gameState.checkpoints = [];
+            gameState.attempt = 1;
+            resetAttempt();
+            sound.startMusic(gameState.isEndless ? 2 : gameState.levelIndex);
+        }
+
+        function returnToMenu() {
+            gameState.mode = 'MENU';
+            gameState.isCustomTest = false;
+            gameState.activeCustomLevel = null;
+            sound.stopMusic();
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('editorHud').classList.add('hidden');
+            document.getElementById('pauseModal').classList.add('hidden');
+            document.getElementById('victoryModal').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+            buildMenuUI();
+        }
+
+        function getProgressPercent() {
+            if (gameState.isEndless) return 0;
+            const totalPx = gameState.levelLengthTiles * TILE;
+            const currentPx = gameState.cameraX + player.x;
+            return Math.min(100, Math.max(0, Math.floor((currentPx / totalPx) * 100)));
+        }
+
+        function updateHUD() {
+            document.getElementById('hudAttempt').textContent = gameState.attempt;
+            if (gameState.isEndless) {
+                const dist = Math.floor(gameState.endlessDistance);
+                document.getElementById('hudPercent').textContent = `${dist} m`;
+                const barPct = Math.min(100, (dist % 200) / 2);
+                document.getElementById('hudProgressBar').style.width = `${barPct}%`;
+            } else {
+                const pct = getProgressPercent();
+                document.getElementById('hudPercent').textContent = `${pct}%`;
+                document.getElementById('hudProgressBar').style.width = `${pct}%`;
+            }
+        }
+
+        // --- 9. BANSKAPPARE (LEVEL EDITOR) ---
+        function openLevelEditor(existingLevel = null) {
+            sound.stopMusic();
+            gameState.mode = 'EDITOR';
+            gameState.isCustomTest = false;
+            gameState.activeCustomLevel = null;
+
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('pauseModal').classList.add('hidden');
+            document.getElementById('victoryModal').classList.add('hidden');
+            document.getElementById('editorHud').classList.remove('hidden');
+
+            if (existingLevel) {
+                editorState.editingCustomId = existingLevel.id;
+                editorState.name = existingLevel.name || 'Min Egen Bana';
+                editorState.speed = existingLevel.speed || 445;
+                editorState.themeIdx = existingLevel.themeIdx ?? 0;
+                editorState.length = existingLevel.length || 120;
+                editorState.obstacles = JSON.parse(JSON.stringify(existingLevel.obstacles || []));
+                editorState.scrollX = 0;
+                editorState.scrollY = 2;
+            } else if (!editorState.obstacles.length && !editorState.editingCustomId) {
+                editorState.name = 'Min Egen Bana';
+                editorState.speed = 445;
+                editorState.themeIdx = 0;
+                editorState.length = 120;
+                editorState.scrollX = 0;
+                editorState.scrollY = 2;
+            }
+
+            document.getElementById('editorNameInput').value = editorState.name;
+            document.getElementById('editorSpeedSelect').value = String(editorState.speed);
+            document.getElementById('editorThemeSelect').value = String(editorState.themeIdx);
+            document.getElementById('editorLengthInput').value = String(editorState.length);
+            syncEditorSliders();
+        }
+
+        function syncEditorSliders() {
+            const sliderX = document.getElementById('editorScrollSlider');
+            sliderX.max = String(Math.max(30, editorState.length));
+            sliderX.value = String(Math.round(editorState.scrollX));
+            document.getElementById('editorCoordReadout').textContent = `X: ${Math.round(editorState.scrollX)}`;
+
+            const sliderY = document.getElementById('editorScrollYSlider');
+            sliderY.value = String(Math.round(editorState.scrollY));
+            document.getElementById('editorCoordYReadout').textContent = `Y: ${Math.round(editorState.scrollY)}`;
+        }
+
+        function selectEditorTool(toolName) {
+            editorState.tool = toolName;
+            document.querySelectorAll('.editor-tool-btn').forEach(btn => {
+                const isSelected = btn.getAttribute('data-tool') === toolName;
+                if (isSelected) {
+                    btn.className = 'editor-tool-btn active neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-cyan-400 bg-cyan-500/25 text-white cursor-pointer';
+                } else {
+                    btn.className = 'editor-tool-btn neon-btn rounded-xl px-3 py-2 text-xs font-display font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-slate-300 cursor-pointer';
+                }
+            });
+        }
+
+        function screenToEditorTile(clientX, clientY) {
+            const editorGroundY = gameState.groundY + (editorState.scrollY - 2) * TILE;
+            const worldX = editorState.scrollX * TILE + clientX;
+            const tileX = Math.floor(worldX / TILE);
+            const tileY = Math.floor((editorGroundY - clientY) / TILE);
+            return { tileX, tileY };
+        }
+
+        function handleEditorPointerDown(clientX, clientY, button) {
+            if (button === 2 || editorState.tool === 'pan') {
+                editorState.isDragging = true;
+                editorState.panStartMouseX = clientX;
+                editorState.panStartMouseY = clientY;
+                editorState.panStartScrollX = editorState.scrollX;
+                editorState.panStartScrollY = editorState.scrollY;
+                return;
+            }
+            editorState.isDragging = true;
+            editorState.lastPaintKey = '';
+            paintEditorAt(clientX, clientY, button === 1 ? 'erase' : editorState.tool);
+        }
+
+        function handleEditorPointerMove(clientX, clientY) {
+            const { tileX, tileY } = screenToEditorTile(clientX, clientY);
+            editorState.hoverTileX = tileX;
+            editorState.hoverTileY = tileY;
+
+            if (!editorState.isDragging) return;
+
+            if (editorState.tool === 'pan') {
+                const dx = (editorState.panStartMouseX - clientX) / TILE;
+                const dy = (clientY - editorState.panStartMouseY) / TILE;
+                editorState.scrollX = Math.max(0, Math.min(editorState.length, editorState.panStartScrollX + dx));
+                editorState.scrollY = Math.max(-4, Math.min(20, editorState.panStartScrollY + dy));
+                syncEditorSliders();
+                return;
+            }
+
+            paintEditorAt(clientX, clientY, editorState.tool);
+        }
+
+        function paintEditorAt(clientX, clientY, toolOverride = null) {
+            const activeTool = toolOverride || editorState.tool;
+            const { tileX, tileY } = screenToEditorTile(clientX, clientY);
+            if (tileX < 2 || tileX > 1200 || tileY < 0 || tileY > 24) return;
+
+            const key = `${activeTool}:${tileX}:${tileY}`;
+            if (editorState.lastPaintKey === key) return;
+            editorState.lastPaintKey = key;
+
+            editorState.obstacles = editorState.obstacles.filter(o => {
+                const ow = o.w || 1;
+                const oh = o.h || 1;
+                return !(tileX >= o.x && tileX < o.x + ow && tileY >= o.y && tileY < o.y + oh);
+            });
+
+            if (activeTool === 'block') {
+                editorState.obstacles.push({ type: 'block', x: tileX, y: tileY, w: 1, h: 1 });
+            } else if (activeTool === 'spike') {
+                editorState.obstacles.push({ type: 'spike', x: tileX, y: tileY });
+            } else if (activeTool === 'pad') {
+                editorState.obstacles.push({ type: 'pad', x: tileX, y: tileY });
+            } else if (activeTool === 'blue_pad') {
+                editorState.obstacles.push({ type: 'blue_pad', x: tileX, y: tileY });
+            } else if (activeTool === 'pink_pad') {
+                editorState.obstacles.push({ type: 'pink_pad', x: tileX, y: tileY });
+            } else if (activeTool === 'orb') {
+                editorState.obstacles.push({ type: 'orb', x: tileX, y: tileY });
+            } else if (activeTool === 'blue_orb') {
+                editorState.obstacles.push({ type: 'blue_orb', x: tileX, y: tileY });
+            } else if (activeTool === 'pink_orb') {
+                editorState.obstacles.push({ type: 'pink_orb', x: tileX, y: tileY });
+            } else if (activeTool === 'portal_cube' || activeTool === 'portal_ship' || activeTool === 'portal_wave') {
+                editorState.obstacles.push({ type: activeTool, x: tileX, y: tileY });
+            }
+        }
+
+        function buildCustomLevelObject() {
+            const nameInput = document.getElementById('editorNameInput').value.trim() || 'Min Egen Bana';
+            const speedVal = Number(document.getElementById('editorSpeedSelect').value) || 445;
+            const themeIdx = Number(document.getElementById('editorThemeSelect').value) || 0;
+            const lengthVal = Math.max(30, Math.min(1200, Number(document.getElementById('editorLengthInput').value) || 120));
+
+            editorState.name = nameInput;
+            editorState.speed = speedVal;
+            editorState.themeIdx = themeIdx;
+            editorState.length = lengthVal;
+
+            return {
+                id: editorState.editingCustomId || ('custom_' + Date.now()),
+                name: nameInput,
+                speed: speedVal,
+                themeIdx: themeIdx,
+                theme: THEME_PRESETS[themeIdx % THEME_PRESETS.length],
+                length: lengthVal,
+                obstacles: JSON.parse(JSON.stringify(editorState.obstacles))
+            };
+        }
+
+        function saveCurrentEditorLevel() {
+            const lvl = buildCustomLevelObject();
+            editorState.editingCustomId = lvl.id;
+            const existingIdx = saveData.customLevels.findIndex(c => c.id === lvl.id);
+            if (existingIdx >= 0) saveData.customLevels[existingIdx] = lvl;
+            else saveData.customLevels.unshift(lvl);
+            writeSaveData(saveData);
+            showToast(`Sparade "${lvl.name}"! 💾`);
+        }
+
+        function publishCurrentEditorLevel() {
+            const lvl = buildCustomLevelObject();
+            if (!lvl.obstacles || lvl.obstacles.length === 0) {
+                showToast('Bygg minst ett hinder innan du publicerar banan!');
+                return;
+            }
+            saveCurrentEditorLevel();
+            if (typeof window.publishLevelToCommunity === 'function') {
+                window.publishLevelToCommunity(lvl);
+            }
+        }
+
+        function testEditorLevel() {
+            const lvl = buildCustomLevelObject();
+            startCustomLevel(lvl, true);
+        }
+
+        canvas.addEventListener('contextmenu', (e) => {
+            if (gameState.mode === 'EDITOR') e.preventDefault();
+        });
+
+        // --- 10. FYSIK & KOLLISIONER (CUBE, SHIP & WAVE) ---
+        function checkOrbActivation() {
+            if (player.vehicle !== 'cube') return;
+            const pCenterX = gameState.cameraX + player.x + player.size * 0.5;
+            const pCenterY = player.y + player.size * 0.5;
+
+            for (let i = 0; i < gameState.obstacles.length; i++) {
+                const obs = gameState.obstacles[i];
+                if ((obs.type !== 'orb' && obs.type !== 'blue_orb' && obs.type !== 'pink_orb') || player.usedOrbs.has(i)) continue;
+
+                const orbX = obs.x * TILE + TILE * 0.5;
+                const orbY = gameState.groundY - obs.y * TILE - TILE * 0.5;
+                const dist = Math.hypot(pCenterX - orbX, pCenterY - orbY);
+
+                if (dist <= TILE * 1.15) {
+                    player.usedOrbs.add(i);
+                    player.grounded = false;
+                    player.jumpBufferTimer = 0;
+
+                    if (obs.type === 'blue_orb') {
+                        player.gravityDir *= -1;
+                        player.vy = 320 * player.gravityDir;
+                        sound.playGravityFlip(player.gravityDir === -1);
+                        spawnBurst(orbX - gameState.cameraX, orbY, '#38bdf8', 16);
+                    } else if (obs.type === 'pink_orb') {
+                        player.vy = PINK_ORB_VELOCITY * player.gravityDir;
+                        sound.playOrb();
+                        spawnBurst(orbX - gameState.cameraX, orbY, '#ff47b6', 14);
+                    } else {
+                        player.vy = ORB_VELOCITY * player.gravityDir;
+                        sound.playOrb();
+                        spawnBurst(orbX - gameState.cameraX, orbY, '#fee440', 14);
+                    }
+                    break;
+                }
+            }
+        }
+
+        function updatePhysics(dt) {
+            if (gameState.mode !== 'PLAYING') return;
+
+            if (gameState.spawnGraceTimer > 0) {
+                gameState.spawnGraceTimer = Math.max(0, gameState.spawnGraceTimer - dt);
+            }
+
+            if (gameState.isEndless) {
+                gameState.currentSpeed = Math.min(640, 420 + gameState.endlessDistance * 0.25);
+                gameState.endlessDistance += (gameState.currentSpeed * dt) / TILE;
+
+                while (gameState.endlessNextSpawnX * TILE < gameState.cameraX + viewWidth * 1.8) {
+                    generateEndlessChunk();
+                }
+                if (gameState.obstacles.length > 60) {
+                    gameState.obstacles = gameState.obstacles.filter(o => (o.x + (o.w || 1)) * TILE > gameState.cameraX - 200);
+                }
+            }
+
+            gameState.cameraX += gameState.currentSpeed * dt;
+            gameState.bgGridOffset = (gameState.bgGridOffset + gameState.currentSpeed * 0.35 * dt) % (TILE * 2);
+
+            if (gameState.practiceMode && !gameState.isEndless) {
+                gameState.autoCheckpointTimer += dt;
+                if (gameState.autoCheckpointTimer >= 3.2 && player.grounded && isPositionSafeForCheckpoint(gameState.cameraX, player.y, player.vehicle)) {
+                    placeCheckpoint(false);
+                }
+            }
+
+            const prevY = player.y;
+            const prevBottom = prevY + player.size;
+            const prevTop = prevY;
+            const ceilingY = gameState.groundY - CEILING_TILES * TILE;
+
+            // --- FORDONSSPECIFIK FYSIK ---
+            if (player.vehicle === 'ship') {
+                const shipLiftAccel = -1480;
+                const shipFallAccel = 940;
+                if (player.jumpHeld) {
+                    if (player.vy > 0) player.vy -= 1950 * dt;
+                    player.vy += shipLiftAccel * dt;
+                } else {
+                    if (player.vy < 0) player.vy += 1550 * dt;
+                    player.vy += shipFallAccel * dt;
+                }
+                player.vy = Math.max(-490, Math.min(490, player.vy));
+                player.y += player.vy * dt;
+                player.grounded = false;
+
+                if (player.y + player.size >= gameState.groundY) {
+                    player.y = gameState.groundY - player.size;
+                    player.vy = 0;
+                    player.grounded = true;
+                }
+                if (player.y <= ceilingY) {
+                    player.y = ceilingY;
+                    player.vy = 0;
+                }
+                const targetRot = Math.atan2(player.vy, gameState.currentSpeed) * 0.85;
+                player.rotation += (targetRot - player.rotation) * Math.min(1, dt * 16);
+
+            } else if (player.vehicle === 'wave') {
+                const waveSlope = gameState.currentSpeed * 0.92;
+                player.vy = player.jumpHeld ? -waveSlope : waveSlope;
+                player.y += player.vy * dt;
+                player.grounded = false;
+
+                if (player.y + player.size >= gameState.groundY) {
+                    player.y = gameState.groundY - player.size;
+                    player.vy = 0;
+                }
+                if (player.y <= ceilingY) {
+                    player.y = ceilingY;
+                    player.vy = 0;
+                }
+                player.rotation = player.jumpHeld ? -Math.PI / 4 : Math.PI / 4;
+
+                player.waveTrail.push({
+                    worldX: gameState.cameraX + player.x + player.size * 0.5,
+                    y: player.y + player.size * 0.5
+                });
+                if (player.waveTrail.length > 75) player.waveTrail.shift();
+
+            } else {
+                // CUBE-FYSIK
+                if (player.grounded) {
+                    player.coyoteTimer = 0.06;
+                } else {
+                    player.coyoteTimer = Math.max(0, player.coyoteTimer - dt);
+                }
+
+                if (player.jumpBufferTimer > 0) {
+                    player.jumpBufferTimer = Math.max(0, player.jumpBufferTimer - dt);
+                }
+
+                const wantsJump = player.jumpHeld || player.jumpBufferTimer > 0;
+                if (wantsJump && (player.grounded || player.coyoteTimer > 0)) {
+                    player.vy = JUMP_VELOCITY * player.gravityDir;
+                    player.grounded = false;
+                    player.coyoteTimer = 0;
+                    player.jumpBufferTimer = 0;
+                    sound.playJump();
+                }
+
+                player.vy += GRAVITY * player.gravityDir * dt;
+                player.y += player.vy * dt;
+
+                if (player.gravityDir === 1 && player.y + player.size >= gameState.groundY) {
+                    player.y = gameState.groundY - player.size;
+                    player.vy = 0;
+                    player.grounded = true;
+                } else if (player.gravityDir === -1 && player.y <= ceilingY) {
+                    player.y = ceilingY;
+                    player.vy = 0;
+                    player.grounded = true;
+                } else {
+                    player.grounded = false;
+                }
+            }
+
+            // --- KOLLISION MOT OBJEKT & PORTALER ---
+            const worldLeft = gameState.cameraX + player.x;
+            const worldRight = worldLeft + player.size;
+
+            const pLeft = worldLeft + 6;
+            const pRight = worldRight - 6;
+            const pTop = player.y + 4;
+            const pBottom = player.y + player.size;
+
+            for (let i = 0; i < gameState.obstacles.length; i++) {
+                const obs = gameState.obstacles[i];
+                const ox = obs.x * TILE;
+                const ow = (obs.w || 1) * TILE;
+                const oh = (obs.h || 1) * TILE;
+                const oy = gameState.groundY - obs.y * TILE - oh;
+
+                if (ox > worldRight + 60 || ox + ow < worldLeft - 60) continue;
+
+                if (obs.type === 'portal_cube' || obs.type === 'portal_ship' || obs.type === 'portal_wave') {
+                    const portalTop = oy - TILE * 2;
+                    const portalBottom = oy + oh;
+                    const portalLeft = ox - 12;
+                    const portalRight = ox + ow + 12;
+                    if (worldRight > portalLeft && worldLeft < portalRight && (player.y + player.size) > portalTop && player.y < portalBottom) {
+                        const targetVehicle = obs.type === 'portal_ship' ? 'ship' : (obs.type === 'portal_wave' ? 'wave' : 'cube');
+                        if (player.vehicle !== targetVehicle) {
+                            player.vehicle = targetVehicle;
+                            player.gravityDir = 1;
+                            player.waveTrail = [];
+                            if (targetVehicle === 'cube') {
+                                const quarter = Math.PI / 2;
+                                player.rotation = Math.round(player.rotation / quarter) * quarter;
+                            }
+                            sound.playPortal();
+                            updateModeBadge();
+                            spawnBurst(player.x + player.size * 0.5, player.y + player.size * 0.5 + gameState.cameraYOffset, '#00f5d4', 20);
+                        }
+                    }
+                    continue;
+                }
+
+                if (obs.type === 'block') {
+                    if (pRight > ox && pLeft < ox + ow && pBottom >= oy && pTop <= oy + oh) {
+                        if (player.vehicle === 'wave') {
+                            triggerCrash();
+                            return;
+                        }
+                        if (player.vehicle === 'cube' && player.gravityDir === -1) {
+                            if (prevTop >= oy + oh - 22 && player.vy <= 0) {
+                                player.y = oy + oh;
+                                player.vy = 0;
+                                player.grounded = true;
+                            } else if (pTop < oy + oh - 6) {
+                                triggerCrash();
+                                return;
+                            }
+                        } else if (prevBottom <= oy + 22 && player.vy >= 0) {
+                            player.y = oy - player.size;
+                            player.vy = 0;
+                            player.grounded = true;
+                        } else if (player.vehicle === 'ship' && prevTop >= oy + oh - 16 && player.vy <= 0) {
+                            player.y = oy + oh;
+                            player.vy = 0;
+                        } else if (pBottom > oy + 6) {
+                            triggerCrash();
+                            return;
+                        }
+                    }
+                } else if (obs.type === 'spike') {
+                    const sLeft = ox + ow * 0.28;
+                    const sRight = ox + ow * 0.72;
+                    const sTop = oy + oh * 0.28;
+                    const sBottom = oy + oh * 0.92;
+
+                    if (pRight > sLeft && pLeft < sRight && pBottom > sTop && pTop < sBottom) {
+                        triggerCrash();
+                        return;
+                    }
+                } else if ((obs.type === 'pad' || obs.type === 'blue_pad' || obs.type === 'pink_pad') && !player.usedPads.has(i)) {
+                    const padZoneTop = player.gravityDir === 1 ? (oy + oh - 16) : oy;
+                    const padZoneBottom = player.gravityDir === 1 ? (oy + oh) : (oy + 16);
+                    if (pRight > ox + 4 && pLeft < ox + ow - 4 && pBottom >= padZoneTop && pTop <= padZoneBottom) {
+                        player.usedPads.add(i);
+                        player.grounded = false;
+                        if (obs.type === 'blue_pad') {
+                            player.gravityDir *= -1;
+                            player.vy = 420 * player.gravityDir;
+                            sound.playGravityFlip(player.gravityDir === -1);
+                            spawnBurst(ox - gameState.cameraX + ow * 0.5, oy + oh * 0.5, '#38bdf8', 16);
+                        } else if (obs.type === 'pink_pad') {
+                            player.vy = PINK_PAD_VELOCITY * player.gravityDir;
+                            sound.playPad();
+                            spawnBurst(ox - gameState.cameraX + ow * 0.5, oy + oh, '#ff47b6', 14);
+                        } else {
+                            player.vy = PAD_VELOCITY * player.gravityDir;
+                            sound.playPad();
+                            spawnBurst(ox - gameState.cameraX + ow * 0.5, oy + oh, '#fee440', 14);
+                        }
+                    }
+                }
+            }
+
+            // Kubrotation efter mark- och blockkollisioner så den aldrig rullar på block
+            if (player.vehicle === 'cube') {
+                if (!player.grounded) {
+                    player.rotation += 7.2 * player.gravityDir * dt;
+                } else {
+                    const quarter = Math.PI / 2;
+                    player.rotation = Math.round(player.rotation / quarter) * quarter;
+                }
+            }
+
+            // Mjuk vertikal kamera vid höga hopp / flygning
+            const desiredCamY = Math.max(0, (gameState.groundY - 220) - player.y) * 0.62;
+            gameState.cameraYOffset += (desiredCamY - gameState.cameraYOffset) * Math.min(1, dt * 8);
+
+            // Spår (Trail) för Cube & Ship
+            if (player.vehicle !== 'wave') {
+                player.trail.push({
+                    worldX: gameState.cameraX + player.x,
+                    y: player.y,
+                    rotation: player.rotation,
+                    alpha: 0.65
+                });
+                if (player.trail.length > 16) player.trail.shift();
+                for (const t of player.trail) t.alpha *= 0.88;
+            }
+
+            // Spara rekord & kolla mål
+            if (gameState.isEndless) {
+                const dist = Math.floor(gameState.endlessDistance);
+                if (dist > saveData.endlessBest) {
+                    saveData.endlessBest = dist;
+                }
+            } else {
+                const pct = getProgressPercent();
+                if (!gameState.activeCustomLevel) {
+                    if (gameState.practiceMode) {
+                        if (pct > (saveData.practiceBestProgress[gameState.levelIndex] || 0)) {
+                            saveData.practiceBestProgress[gameState.levelIndex] = pct;
+                        }
+                    } else if (pct > saveData.bestProgress[gameState.levelIndex]) {
+                        saveData.bestProgress[gameState.levelIndex] = pct;
+                    }
+                }
+
+                if (gameState.cameraX + player.x >= gameState.levelLengthTiles * TILE) {
+                    triggerVictory();
+                    return;
+                }
+            }
+
+            updateHUD();
+        }
+
+        function triggerCrash() {
+            if (gameState.mode !== 'PLAYING') return;
+            gameState.mode = 'CRASHING';
+            sound.playCrash();
+            gameState.shakeTimer = 0.28;
+            gameState.shakeIntensity = 12;
+
+            const colorObj = CUBE_COLORS.find(c => c.id === saveData.colorId) || CUBE_COLORS[0];
+            spawnBurst(player.x + player.size * 0.5, player.y + player.size * 0.5 + gameState.cameraYOffset, colorObj.primary, 28);
+            spawnBurst(player.x + player.size * 0.5, player.y + player.size * 0.5 + gameState.cameraYOffset, '#ffffff', 12);
+
+            if (gameState.practiceMode && gameState.checkpoints.length > 0 && gameState.spawnGraceTimer > 0) {
+                gameState.consecutiveFastDeaths++;
+                if (gameState.consecutiveFastDeaths >= 2) {
+                    gameState.checkpoints.pop();
+                    gameState.consecutiveFastDeaths = 0;
+                    showToast('Checkpoint nära hinder togs bort automatiskt');
+                }
+            } else {
+                gameState.consecutiveFastDeaths = 0;
+            }
+
+            writeSaveData(saveData);
+
+            setTimeout(() => {
+                if (gameState.mode === 'CRASHING') {
+                    gameState.attempt++;
+                    resetAttempt();
+                }
+            }, 620);
+        }
+
+        function triggerVictory() {
+            gameState.mode = 'VICTORY';
+            sound.stopMusic();
+            sound.playWin();
+
+            if (!gameState.practiceMode && !gameState.activeCustomLevel) {
+                saveData.bestProgress[gameState.levelIndex] = 100;
+                saveData.completed[gameState.levelIndex] = true;
+            } else if (gameState.practiceMode && !gameState.activeCustomLevel) {
+                saveData.practiceBestProgress[gameState.levelIndex] = 100;
+            }
+            writeSaveData(saveData);
+            updateHUD();
+
+            const levelTitle = gameState.activeCustomLevel
+                ? gameState.activeCustomLevel.name
+                : LEVELS[gameState.levelIndex].name;
+
+            document.getElementById('victoryTitle').textContent = gameState.practiceMode ? 'ÖVNING KLAR!' : 'BANA AVKLARAD!';
+            document.getElementById('victoryLevelName').textContent = levelTitle + (gameState.practiceMode ? ' (Övningsläge)' : '');
+            document.getElementById('victoryAttempts').textContent = gameState.attempt;
+
+            const nextBtn = document.getElementById('victoryNextBtn');
+            nextBtn.textContent = gameState.isCustomTest ? '🛠️ TILL EDITOR' : (gameState.activeCustomLevel ? '⌂ TILL MENY' : 'NÄSTA BANA ▶');
+
+            document.getElementById('victoryModal').classList.remove('hidden');
+        }
+
+        // --- 11. RITFUNKTIONER FÖR FORDON (CUBE, SHIP, WAVE) ---
+        function drawCubeGraphic(targetCtx, cx, cy, size, rotation, colorObj, skinId) {
+            targetCtx.save();
+            targetCtx.translate(cx, cy);
+            targetCtx.rotate(rotation);
+
+            const half = size * 0.5;
+            targetCtx.shadowColor = colorObj.primary;
+            targetCtx.shadowBlur = 16;
+
+            const grad = targetCtx.createLinearGradient(-half, -half, half, half);
+            grad.addColorStop(0, colorObj.primary);
+            grad.addColorStop(1, colorObj.secondary);
+            targetCtx.fillStyle = grad;
+
+            targetCtx.beginPath();
+            targetCtx.roundRect(-half, -half, size, size, 7);
+            targetCtx.fill();
+
+            targetCtx.shadowBlur = 0;
+            targetCtx.strokeStyle = '#ffffff';
+            targetCtx.lineWidth = 2.5;
+            targetCtx.stroke();
+
+            targetCtx.fillStyle = 'rgba(6, 9, 19, 0.72)';
+            if (skinId === 'classic') {
+                targetCtx.fillRect(-half * 0.56, -half * 0.42, size * 0.22, size * 0.22);
+                targetCtx.fillRect(half * 0.12, -half * 0.42, size * 0.22, size * 0.22);
+                targetCtx.fillRect(-half * 0.52, half * 0.16, size * 0.52, size * 0.18);
+            } else if (skinId === 'core') {
+                targetCtx.beginPath();
+                targetCtx.arc(0, 0, half * 0.46, 0, Math.PI * 2);
+                targetCtx.fill();
+                targetCtx.fillStyle = '#ffffff';
+                targetCtx.beginPath();
+                targetCtx.arc(0, 0, half * 0.2, 0, Math.PI * 2);
+                targetCtx.fill();
+            } else if (skinId === 'visor') {
+                targetCtx.fillRect(-half * 0.65, -half * 0.3, size * 0.65, size * 0.26);
+                targetCtx.fillStyle = '#ffffff';
+                targetCtx.fillRect(-half * 0.5, -half * 0.23, size * 0.45, size * 0.1);
+            } else if (skinId === 'star') {
+                targetCtx.beginPath();
+                for (let i = 0; i < 4; i++) {
+                    const a = (i * Math.PI) / 2;
+                    targetCtx.lineTo(Math.cos(a) * half * 0.58, Math.sin(a) * half * 0.58);
+                    targetCtx.lineTo(Math.cos(a + Math.PI / 4) * half * 0.22, Math.sin(a + Math.PI / 4) * half * 0.22);
+                }
+                targetCtx.closePath();
+                targetCtx.fill();
+            }
+
+            targetCtx.restore();
+        }
+
+        function drawShipGraphic(targetCtx, cx, cy, size, rotation, colorObj, skinId) {
+            targetCtx.save();
+            targetCtx.translate(cx, cy);
+            targetCtx.rotate(rotation);
+
+            const half = size * 0.52;
+            targetCtx.shadowColor = colorObj.primary;
+            targetCtx.shadowBlur = 16;
+
+            const grad = targetCtx.createLinearGradient(-half, -half, half, half);
+            grad.addColorStop(0, colorObj.primary);
+            grad.addColorStop(1, colorObj.secondary);
+            targetCtx.fillStyle = grad;
+
+            targetCtx.beginPath();
+            targetCtx.moveTo(-half * 1.1, half * 0.55);
+            targetCtx.lineTo(-half * 0.7, -half * 0.2);
+            targetCtx.lineTo(half * 0.2, -half * 0.2);
+            targetCtx.lineTo(half * 1.25, half * 0.15);
+            targetCtx.lineTo(half * 0.75, half * 0.68);
+            targetCtx.lineTo(-half * 0.9, half * 0.68);
+            targetCtx.closePath();
+            targetCtx.fill();
+
+            targetCtx.shadowBlur = 0;
+            targetCtx.strokeStyle = '#ffffff';
+            targetCtx.lineWidth = 2.2;
+            targetCtx.stroke();
+
+            drawCubeGraphic(targetCtx, -half * 0.1, -half * 0.38, size * 0.46, 0, colorObj, skinId);
+
+            targetCtx.restore();
+        }
+
+        function drawWaveGraphic(targetCtx, cx, cy, size, rotation, colorObj) {
+            targetCtx.save();
+            targetCtx.translate(cx, cy);
+            targetCtx.rotate(rotation);
+
+            const half = size * 0.44;
+            targetCtx.shadowColor = colorObj.primary;
+            targetCtx.shadowBlur = 18;
+
+            const grad = targetCtx.createLinearGradient(-half, -half, half, half);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.35, colorObj.primary);
+            grad.addColorStop(1, colorObj.secondary);
+            targetCtx.fillStyle = grad;
+
+            targetCtx.beginPath();
+            targetCtx.moveTo(half * 1.25, 0);
+            targetCtx.lineTo(-half * 0.85, -half * 0.78);
+            targetCtx.lineTo(-half * 0.4, 0);
+            targetCtx.lineTo(-half * 0.85, half * 0.78);
+            targetCtx.closePath();
+            targetCtx.fill();
+
+            targetCtx.shadowBlur = 0;
+            targetCtx.strokeStyle = '#ffffff';
+            targetCtx.lineWidth = 2;
+            targetCtx.stroke();
+
+            targetCtx.restore();
+        }
+
+        // --- 12. HUVUDRENDERING (SPEL & BANSKAPPARE) ---
+        function drawScene() {
+            const isEditor = gameState.mode === 'EDITOR';
+            const theme = isEditor
+                ? THEME_PRESETS[(Number(document.getElementById('editorThemeSelect')?.value) || 0) % THEME_PRESETS.length]
+                : (gameState.activeCustomLevel
+                    ? (gameState.activeCustomLevel.theme || THEME_PRESETS[0])
+                    : (LEVELS[gameState.levelIndex]?.theme || THEME_PRESETS[0]));
+
+            const colorObj = CUBE_COLORS.find(c => c.id === saveData.colorId) || CUBE_COLORS[0];
+
+            ctx.save();
+            if (gameState.shakeTimer > 0) {
+                const dx = (Math.random() - 0.5) * gameState.shakeIntensity * 2;
+                const dy = (Math.random() - 0.5) * gameState.shakeIntensity * 2;
+                ctx.translate(dx, dy);
+            }
+
+            // 1. Bakgrundsgradient
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, viewHeight);
+            bgGrad.addColorStop(0, theme.bgTop);
+            bgGrad.addColorStop(1, theme.bgBottom);
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+            const activeCamX = isEditor ? editorState.scrollX * TILE : gameState.cameraX;
+            const activeGroundY = isEditor
+                ? (gameState.groundY + (editorState.scrollY - 2) * TILE)
+                : (gameState.groundY + gameState.cameraYOffset);
+            const activeObstacles = isEditor ? editorState.obstacles : gameState.obstacles;
+
+            // 2. Parallax-rutnät i bakgrunden
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.045)';
+            ctx.lineWidth = 1;
+            const gridSize = isEditor ? TILE : TILE * 2;
+            const startGridX = -(activeCamX % gridSize);
+            for (let gx = startGridX; gx < viewWidth; gx += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(gx, 0);
+                ctx.lineTo(gx, activeGroundY);
+                ctx.stroke();
+            }
+            for (let gy = activeGroundY; gy > -TILE * 16; gy -= gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, gy);
+                ctx.lineTo(viewWidth, gy);
+                ctx.stroke();
+            }
+
+            // Taklinje för Ship / Wave / Editor
+            const ceilingScreenY = activeGroundY - CEILING_TILES * TILE;
+            if (isEditor || player.vehicle === 'ship' || player.vehicle === 'wave' || player.gravityDir === -1) {
+                ctx.save();
+                ctx.strokeStyle = isEditor ? 'rgba(255, 255, 255, 0.22)' : theme.accent;
+                ctx.lineWidth = isEditor ? 1.5 : 3;
+                if (isEditor) ctx.setLineDash([6, 6]);
+                ctx.beginPath();
+                ctx.moveTo(0, ceilingScreenY);
+                ctx.lineTo(viewWidth, ceilingScreenY);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // Editor: Markera vald ruta under muspekaren
+            if (isEditor && editorState.hoverTileX >= 2 && editorState.hoverTileY >= 0) {
+                const hx = editorState.hoverTileX * TILE - activeCamX;
+                const hy = activeGroundY - (editorState.hoverTileY + 1) * TILE;
+                ctx.fillStyle = 'rgba(0, 245, 212, 0.18)';
+                ctx.strokeStyle = '#00f5d4';
+                ctx.lineWidth = 2;
+                ctx.fillRect(hx, hy, TILE, TILE);
+                ctx.strokeRect(hx, hy, TILE, TILE);
+            }
+
+            // 3. Mållinje
+            const targetLen = isEditor
+                ? (Number(document.getElementById('editorLengthInput')?.value) || 120)
+                : gameState.levelLengthTiles;
+
+            if (!gameState.isEndless) {
+                const finishScreenX = targetLen * TILE - activeCamX;
+                if (finishScreenX > -100 && finishScreenX < viewWidth + 200) {
+                    const fGrad = ctx.createLinearGradient(finishScreenX - 30, 0, finishScreenX + 50, 0);
+                    fGrad.addColorStop(0, 'rgba(0, 245, 212, 0)');
+                    fGrad.addColorStop(0.5, 'rgba(0, 245, 212, 0.35)');
+                    fGrad.addColorStop(1, 'rgba(0, 245, 212, 0)');
+                    ctx.fillStyle = fGrad;
+                    ctx.fillRect(finishScreenX - 30, 0, 80, activeGroundY);
+
+                    ctx.strokeStyle = '#00f5d4';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(finishScreenX, 0);
+                    ctx.lineTo(finishScreenX, activeGroundY);
+                    ctx.stroke();
+                }
+            }
+
+            // 4. Rita hinder & portaler
+            for (const obs of activeObstacles) {
+                const ox = obs.x * TILE;
+                const ow = (obs.w || 1) * TILE;
+                const oh = (obs.h || 1) * TILE;
+                const sx = ox - activeCamX;
+                const sy = activeGroundY - obs.y * TILE - oh;
+
+                if (sx > viewWidth + 80 || sx + ow < -80) continue;
+
+                if (obs.type === 'portal_cube' || obs.type === 'portal_ship' || obs.type === 'portal_wave') {
+                    const pColor = obs.type === 'portal_ship' ? '#ff2a85' : (obs.type === 'portal_wave' ? '#fee440' : '#00f5d4');
+                    const pLabel = obs.type === 'portal_ship' ? 'SHIP' : (obs.type === 'portal_wave' ? 'WAVE' : 'CUBE');
+                    const pTop = sy - TILE * 2;
+                    const pHeight = oh + TILE * 2;
+
+                    ctx.save();
+                    ctx.shadowColor = pColor;
+                    ctx.shadowBlur = 18;
+                    ctx.strokeStyle = pColor;
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.roundRect(sx + 6, pTop + 4, ow - 12, pHeight - 8, 16);
+                    ctx.stroke();
+
+                    ctx.fillStyle = pColor + '28';
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '900 10px Orbitron, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(pLabel, sx + ow * 0.5, pTop - 6);
+                    ctx.restore();
+
+                } else if (obs.type === 'block') {
+                    ctx.fillStyle = theme.blockFill;
+                    ctx.fillRect(sx, sy, ow, oh);
+
+                    ctx.strokeStyle = theme.blockBorder;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(sx + 1, sy + 1, ow - 2, oh - 2);
+
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+                    ctx.fillRect(sx + 2, sy + 2, ow - 4, 4);
+
+                } else if (obs.type === 'spike') {
+                    ctx.save();
+                    ctx.shadowColor = '#ff2a85';
+                    ctx.shadowBlur = 12;
+
+                    const spikeGrad = ctx.createLinearGradient(sx, sy, sx, sy + oh);
+                    spikeGrad.addColorStop(0, '#ff4d94');
+                    spikeGrad.addColorStop(1, '#7a0938');
+                    ctx.fillStyle = spikeGrad;
+
+                    ctx.beginPath();
+                    ctx.moveTo(sx + ow * 0.5, sy + 3);
+                    ctx.lineTo(sx + ow - 3, sy + oh - 1);
+                    ctx.lineTo(sx + 3, sy + oh - 1);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    ctx.shadowBlur = 0;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1.6;
+                    ctx.stroke();
+                    ctx.restore();
+
+                } else if (obs.type === 'pad' || obs.type === 'blue_pad' || obs.type === 'pink_pad') {
+                    const isBlue = obs.type === 'blue_pad';
+                    const isPink = obs.type === 'pink_pad';
+                    const padColor = isBlue ? '#38bdf8' : (isPink ? '#ff47b6' : '#fee440');
+                    const padH = isPink ? 9 : 12;
+                    const padY = sy + oh - padH;
+                    ctx.save();
+                    ctx.shadowColor = padColor;
+                    ctx.shadowBlur = 14;
+                    ctx.fillStyle = padColor;
+                    ctx.beginPath();
+                    ctx.roundRect(sx + 4, padY, ow - 8, padH, [6, 6, 0, 0]);
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(sx + 10, padY + 2, ow - 20, 3);
+                    ctx.restore();
+                } else if (obs.type === 'orb' || obs.type === 'blue_orb' || obs.type === 'pink_orb') {
+                    const isBlue = obs.type === 'blue_orb';
+                    const isPink = obs.type === 'pink_orb';
+                    const orbColor = isBlue ? '#38bdf8' : (isPink ? '#ff47b6' : '#fee440');
+                    const cx = sx + ow * 0.5;
+                    const cy = sy + oh * 0.5;
+                    const baseScale = isPink ? 0.28 : 0.34;
+                    const radius = TILE * baseScale + Math.sin(performance.now() * 0.008) * 2.5;
+
+                    ctx.save();
+                    ctx.shadowColor = orbColor;
+                    ctx.shadowBlur = 16;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, radius + 4, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    ctx.fillStyle = orbColor;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (isBlue) {
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(cx, cy - radius * 0.5);
+                        ctx.lineTo(cx, cy + radius * 0.5);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+            }
+
+            // 4b. Gröna Checkpoint-diamanter i Övningsläge
+            if (!isEditor && gameState.practiceMode && gameState.checkpoints.length > 0) {
+                for (const cp of gameState.checkpoints) {
+                    const cpx = cp.cameraX - activeCamX + player.x + player.size * 0.5;
+                    const cpy = cp.y + gameState.cameraYOffset + player.size * 0.5;
+                    if (cpx < -40 || cpx > viewWidth + 40) continue;
+
+                    ctx.save();
+                    ctx.translate(cpx, cpy);
+                    ctx.rotate(Math.PI / 4);
+                    ctx.shadowColor = '#10b981';
+                    ctx.shadowBlur = 14;
+                    ctx.fillStyle = '#10b981';
+                    ctx.fillRect(-10, -10, 20, 20);
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-10, -10, 20, 20);
+                    ctx.restore();
+                }
+            }
+
+            // 5. Golv / Marklinje
+            const groundGrad = ctx.createLinearGradient(0, activeGroundY, 0, viewHeight);
+            groundGrad.addColorStop(0, theme.ground);
+            groundGrad.addColorStop(1, '#04060e');
+            ctx.fillStyle = groundGrad;
+            ctx.fillRect(0, activeGroundY, viewWidth, viewHeight - activeGroundY);
+
+            ctx.save();
+            ctx.shadowColor = theme.accent;
+            ctx.shadowBlur = 14;
+            ctx.strokeStyle = theme.accent;
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.moveTo(0, activeGroundY);
+            ctx.lineTo(viewWidth, activeGroundY);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1.5;
+            const gTileOffset = -(activeCamX % (TILE * 1.5));
+            for (let gx = gTileOffset; gx < viewWidth; gx += TILE * 1.5) {
+                ctx.beginPath();
+                ctx.moveTo(gx, activeGroundY + 2);
+                ctx.lineTo(gx - 18, viewHeight);
+                ctx.stroke();
+            }
+
+            // 6. Spelarens spår (Trail) & Fordon (Cube / Ship / Wave)
+            if (!isEditor && gameState.mode !== 'CRASHING') {
+                if (player.vehicle === 'wave' && player.waveTrail.length > 1) {
+                    ctx.save();
+                    ctx.shadowColor = colorObj.primary;
+                    ctx.shadowBlur = 16;
+                    ctx.strokeStyle = colorObj.primary;
+                    ctx.lineWidth = 7;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.beginPath();
+                    player.waveTrail.forEach((pt, idx) => {
+                        const sx = pt.worldX - activeCamX;
+                        const sy = pt.y + gameState.cameraYOffset;
+                        if (idx === 0) ctx.moveTo(sx, sy);
+                        else ctx.lineTo(sx, sy);
+                    });
+                    ctx.stroke();
+
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2.5;
+                    ctx.stroke();
+                    ctx.restore();
+                } else {
+                    for (const t of player.trail) {
+                        const tx = t.worldX - activeCamX + player.size * 0.5;
+                        const ty = t.y + gameState.cameraYOffset + player.size * 0.5;
+                        ctx.save();
+                        ctx.globalAlpha = t.alpha * 0.45;
+                        ctx.translate(tx, ty);
+                        ctx.rotate(t.rotation);
+                        ctx.fillStyle = colorObj.primary;
+                        ctx.fillRect(-player.size * 0.4, -player.size * 0.4, player.size * 0.8, player.size * 0.8);
+                        ctx.restore();
+                    }
+                }
+
+                const drawPlayerY = player.y + gameState.cameraYOffset;
+                const cx = player.x + player.size * 0.5;
+                const cy = drawPlayerY + player.size * 0.5;
+
+                if (player.vehicle === 'ship') {
+                    drawShipGraphic(ctx, cx, cy, player.size, player.rotation, colorObj, saveData.skinId);
+                } else if (player.vehicle === 'wave') {
+                    drawWaveGraphic(ctx, cx, cy, player.size, player.rotation, colorObj);
+                } else {
+                    drawCubeGraphic(ctx, cx, cy, player.size, player.rotation, colorObj, saveData.skinId);
+                }
+            }
+
+            // 7. Partiklar
+            for (const p of particles) {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 10;
+                ctx.fillRect(p.x - p.size * 0.5, p.y - p.size * 0.5, p.size, p.size);
+                ctx.restore();
+            }
+
+            ctx.restore();
+        }
+
+        // --- 14. HUVUDLOOP ---
+        let lastTimestamp = 0;
+
+        function gameLoop(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const dt = Math.min((timestamp - lastTimestamp) / 1000, 0.05);
+            lastTimestamp = timestamp;
+
+            if (gameState.mode === 'PLAYING') {
+                updatePhysics(dt);
+            } else if (gameState.mode === 'MENU') {
+                gameState.bgGridOffset = (gameState.bgGridOffset + 110 * dt) % (TILE * 2);
+                gameState.cameraX += 110 * dt;
+                player.y = gameState.groundY - player.size;
+                player.rotation = 0;
+            }
+
+            if (gameState.shakeTimer > 0) {
+                gameState.shakeTimer = Math.max(0, gameState.shakeTimer - dt);
+            }
+
+            updateParticles(dt);
+            drawScene();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- 15. MENY-UI & KUBFÖRHANDSVISNING ---
+        function renderPreviewCube() {
+            const pCanvas = document.getElementById('previewCubeCanvas');
+            const pCtx = pCanvas.getContext('2d');
+            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+
+            const colorObj = CUBE_COLORS.find(c => c.id === saveData.colorId) || CUBE_COLORS[0];
+            drawCubeGraphic(pCtx, 48, 48, 52, 0, colorObj, saveData.skinId);
+        }
+
+        function buildMenuUI() {
+            const pDot = document.getElementById('practiceToggleDot');
+            const pText = document.getElementById('practiceToggleText');
+            const pToggleBtn = document.getElementById('practiceModeToggle');
+            if (gameState.practiceMode) {
+                pDot.className = 'inline-block w-2.5 h-2.5 rotate-45 bg-emerald-400 shadow-[0_0_8px_#10b981]';
+                pText.textContent = 'PÅ';
+                pToggleBtn.className = 'neon-btn rounded-xl px-3 py-1.5 text-xs font-display font-bold flex items-center gap-1.5 border border-emerald-400/50 bg-emerald-500/20 text-emerald-300 cursor-pointer';
+            } else {
+                pDot.className = 'inline-block w-2.5 h-2.5 rotate-45 bg-slate-500';
+                pText.textContent = 'AV';
+                pToggleBtn.className = 'neon-btn rounded-xl px-3 py-1.5 text-xs font-display font-bold flex items-center gap-1.5 border border-white/15 bg-white/5 text-slate-300 cursor-pointer';
+            }
+
+            const levelList = document.getElementById('levelList');
+            levelList.innerHTML = '';
+
+            // Egna sparade banor överst
+            saveData.customLevels.forEach((customLvl) => {
+                const card = document.createElement('div');
+                card.className = 'w-full rounded-2xl p-3.5 bg-amber-500/10 border border-amber-400/30 flex items-center justify-between gap-2';
+                card.innerHTML = `
+                    <button class="play-custom-btn flex-1 text-left flex items-center justify-between gap-2 cursor-pointer">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-display font-bold text-sm text-amber-200">${customLvl.name}</span>
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold border text-amber-300 bg-amber-500/20 border-amber-400/40">EGEN BANA</span>
+                            </div>
+                            <div class="text-[11px] text-slate-400 mt-0.5">${customLvl.obstacles.length} objekt • Längd ${customLvl.length}m</div>
+                        </div>
+                    </button>
+                    <div class="flex items-center gap-1.5">
+                        <button class="edit-custom-btn neon-btn px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-cyan-300 cursor-pointer" title="Redigera bana">✏️</button>
+                        <button class="del-custom-btn neon-btn px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-xs font-bold text-rose-300 cursor-pointer" title="Ta bort bana">🗑️</button>
+                    </div>
+                `;
+                card.querySelector('.play-custom-btn').addEventListener('click', () => startCustomLevel(customLvl, false));
+                card.querySelector('.edit-custom-btn').addEventListener('click', () => openLevelEditor(customLvl));
+                card.querySelector('.del-custom-btn').addEventListener('click', () => {
+                    saveData.customLevels = saveData.customLevels.filter(c => c.id !== customLvl.id);
+                    writeSaveData(saveData);
+                    buildMenuUI();
+                    showToast('Borttagen');
+                });
+                levelList.appendChild(card);
+            });
+
+            // Inbyggda nivåer
+            LEVELS.forEach((lvl, idx) => {
+                const best = saveData.bestProgress[idx] || 0;
+                const pracBest = saveData.practiceBestProgress[idx] || 0;
+                const done = saveData.completed[idx];
+
+                const btn = document.createElement('button');
+                btn.className = 'neon-btn w-full text-left rounded-2xl p-3.5 bg-slate-900/75 hover:bg-slate-800/85 border border-white/10 flex items-center justify-between gap-3 cursor-pointer';
+                btn.innerHTML = `
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <span class="font-display font-bold text-sm sm:text-base text-white truncate">${lvl.name}</span>
+                            <span class="px-2 py-0.5 rounded-md text-[11px] font-bold border ${lvl.diffColor}">${lvl.difficulty}</span>
+                            ${done ? '<span class="text-emerald-400 text-sm" title="Avklarad">✔</span>' : ''}
+                        </div>
+                        <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-white/5">
+                            <div class="h-full rounded-full ${gameState.practiceMode ? 'bg-gradient-to-r from-emerald-400 to-teal-300' : 'bg-gradient-to-r from-cyan-400 to-sky-400'}" style="width: ${gameState.practiceMode ? pracBest : best}%"></div>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <div class="font-display font-extrabold text-sm sm:text-base ${gameState.practiceMode ? 'text-emerald-300' : 'text-cyan-300'}">${gameState.practiceMode ? pracBest : best}%</div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400">${gameState.practiceMode ? 'Övning' : 'Rekord'}</div>
+                    </div>
+                `;
+                btn.addEventListener('click', () => startLevel(idx, false));
+                levelList.appendChild(btn);
+            });
+
+            // Endless Mode-kort
+            const endlessBtn = document.createElement('button');
+            endlessBtn.className = 'neon-btn w-full text-left rounded-2xl p-3.5 bg-gradient-to-r from-fuchsia-950/60 to-indigo-950/60 hover:from-fuchsia-900/60 hover:to-indigo-900/60 border border-fuchsia-400/30 flex items-center justify-between gap-3 cursor-pointer';
+            endlessBtn.innerHTML = `
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-display font-bold text-sm sm:text-base text-fuchsia-200">∞ Endless Mode</span>
+                        <span class="px-2 py-0.5 rounded-md text-[11px] font-bold border text-fuchsia-300 bg-fuchsia-500/20 border-fuchsia-400/30">Oändlig</span>
+                    </div>
+                    <p class="text-xs text-slate-300 mt-0.5">Hur långt överlever du när farten ökar?</p>
+                </div>
+                <div class="text-right shrink-0">
+                    <div class="font-display font-extrabold text-sm sm:text-base text-fuchsia-300">${saveData.endlessBest}m</div>
+                    <div class="text-[10px] uppercase tracking-wider text-slate-400">Bästa</div>
+                </div>
+            `;
+            endlessBtn.addEventListener('click', () => startLevel(0, true));
+            levelList.appendChild(endlessBtn);
+
+            // Färgpalett
+            const paletteEl = document.getElementById('colorPalette');
+            paletteEl.innerHTML = '';
+            CUBE_COLORS.forEach((col) => {
+                const isSelected = saveData.colorId === col.id;
+                const swatch = document.createElement('button');
+                swatch.className = `neon-btn h-8 rounded-xl border-2 cursor-pointer ${isSelected ? 'border-white scale-105' : 'border-transparent opacity-80'}`;
+                swatch.style.background = `linear-gradient(135deg, ${col.primary}, ${col.secondary})`;
+                swatch.addEventListener('click', () => {
+                    saveData.colorId = col.id;
+                    writeSaveData(saveData);
+                    buildMenuUI();
+                    renderPreviewCube();
+                });
+                paletteEl.appendChild(swatch);
+            });
+
+            // Utseende / Skin
+            const skinEl = document.getElementById('skinSelector');
+            skinEl.innerHTML = '';
+            CUBE_SKINS.forEach((skin) => {
+                const isSelected = saveData.skinId === skin.id;
+                const sBtn = document.createElement('button');
+                sBtn.className = `neon-btn py-2 px-1 rounded-xl text-xs font-semibold border cursor-pointer ${
+                    isSelected
+                        ? 'bg-cyan-500/25 border-cyan-400 text-white'
+                        : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                }`;
+                sBtn.textContent = skin.label;
+                sBtn.addEventListener('click', () => {
+                    saveData.skinId = skin.id;
+                    writeSaveData(saveData);
+                    buildMenuUI();
+                    renderPreviewCube();
+                });
+                skinEl.appendChild(sBtn);
+            });
+
+            document.getElementById('muteIcon').textContent = sound.muted ? '🔇' : '🔊';
+            document.getElementById('muteLabel').textContent = sound.muted ? 'Ljud Av' : 'Ljud På';
+
+            renderCommunityLevelsUI();
+        }
+
+        function renderCommunityLevelsUI() {
+            const container = document.getElementById('communityLevelList');
+            const badge = document.getElementById('communityCountBadge');
+            if (!container) return;
+
+            const list = Array.isArray(window.communityLevels) ? window.communityLevels : [];
+            if (badge) badge.textContent = String(list.length);
+
+            if (list.length === 0) {
+                container.innerHTML = '<div class="text-xs text-slate-400 italic py-2">Inga publicerade banor ännu. Bygg en bana och tryck på 🌐 PUBLICERA!</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            const myUid = typeof window.getCurrentCloudUserId === 'function' ? window.getCurrentCloudUserId() : null;
+
+            list.forEach((pubLvl) => {
+                const isMine = myUid && pubLvl.authorId === myUid;
+                const theme = THEME_PRESETS[(pubLvl.themeIdx || 0) % THEME_PRESETS.length];
+                const resolvedLvl = {
+                    ...pubLvl,
+                    theme,
+                    difficulty: 'Community',
+                    diffColor: 'text-fuchsia-300 bg-fuchsia-500/20 border-fuchsia-400/40'
+                };
+
+                const row = document.createElement('div');
+                row.className = 'w-full rounded-2xl p-3 bg-fuchsia-500/10 hover:bg-fuchsia-500/15 border border-fuchsia-400/30 flex items-center justify-between gap-2';
+                row.innerHTML = `
+                    <button class="play-pub-btn flex-1 text-left cursor-pointer min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="font-display font-bold text-xs sm:text-sm text-fuchsia-200 truncate">${pubLvl.name}</span>
+                            ${isMine ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">DIN BANA</span>' : ''}
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5 truncate">
+                            ▶ ${pubLvl.plays || 0} spelningar • ${pubLvl.length || 120}m • Skapare: ${pubLvl.authorId || 'Okänd'}
+                        </div>
+                    </button>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button class="play-pub-icon neon-btn px-3 py-1.5 rounded-xl bg-gradient-to-r from-fuchsia-400 to-cyan-400 text-slate-950 font-display font-bold text-xs cursor-pointer">▶</button>
+                        ${isMine ? '<button class="del-pub-btn neon-btn px-2.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 text-xs font-bold text-rose-300 cursor-pointer" title="Ta bort från publicerade">🗑️</button>' : ''}
+                    </div>
+                `;
+
+                row.querySelector('.play-pub-btn').addEventListener('click', () => startCustomLevel(resolvedLvl, false));
+                row.querySelector('.play-pub-icon').addEventListener('click', () => startCustomLevel(resolvedLvl, false));
+
+                const delBtn = row.querySelector('.del-pub-btn');
+                if (delBtn && typeof window.deleteCommunityLevel === 'function') {
+                    delBtn.addEventListener('click', () => window.deleteCommunityLevel(pubLvl.docId));
+                }
+
+                container.appendChild(row);
+            });
+        }
+
+        window.renderCommunityLevelsUI = renderCommunityLevelsUI;
+        window.showToast = showToast;
+
+        // --- 16. EVENT LISTENERS FÖR KNAPPAR ---
+        document.getElementById('quickPlayBtn').addEventListener('click', () => {
+            const firstUnfinished = saveData.completed.findIndex(c => !c);
+            startLevel(firstUnfinished >= 0 ? firstUnfinished : 0, false);
+        });
+
+        document.getElementById('openEditorBtn').addEventListener('click', () => {
+            editorState.editingCustomId = null;
+            openLevelEditor();
+        });
+
+        document.getElementById('editorExitBtn').addEventListener('click', () => {
+            gameState.isCustomTest = false;
+            returnToMenu();
+        });
+
+        document.querySelectorAll('.editor-tool-btn').forEach(btn => {
+            btn.addEventListener('click', () => selectEditorTool(btn.getAttribute('data-tool')));
+        });
+
+        document.getElementById('editorScrollSlider').addEventListener('input', (e) => {
+            editorState.scrollX = Number(e.target.value) || 0;
+            document.getElementById('editorCoordReadout').textContent = `X: ${editorState.scrollX}`;
+        });
+
+        document.getElementById('editorScrollYSlider').addEventListener('input', (e) => {
+            editorState.scrollY = Number(e.target.value) || 0;
+            document.getElementById('editorCoordYReadout').textContent = `Y: ${editorState.scrollY}`;
+        });
+
+        document.getElementById('editorLengthInput').addEventListener('change', (e) => {
+            editorState.length = Math.max(30, Math.min(1200, Number(e.target.value) || 120));
+            e.target.value = String(editorState.length);
+            syncEditorSliders();
+        });
+
+        document.getElementById('editorClearBtn').addEventListener('click', () => {
+            editorState.obstacles = [];
+            showToast('Banan rensad');
+        });
+
+        document.getElementById('editorSaveBtn').addEventListener('click', saveCurrentEditorLevel);
+        document.getElementById('editorPublishBtn').addEventListener('click', publishCurrentEditorLevel);
+        document.getElementById('editorPlayBtn').addEventListener('click', testEditorLevel);
+
+        document.getElementById('editorShareBtn').addEventListener('click', () => {
+            const lvl = buildCustomLevelObject();
+            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(lvl))));
+            document.getElementById('shareCodeTextarea').value = encoded;
+            document.getElementById('shareModal').classList.remove('hidden');
+        });
+
+        document.getElementById('closeShareModalBtn').addEventListener('click', () => {
+            document.getElementById('shareModal').classList.add('hidden');
+        });
+
+        document.getElementById('copyShareCodeBtn').addEventListener('click', () => {
+            const ta = document.getElementById('shareCodeTextarea');
+            ta.select();
+            document.execCommand('copy');
+            showToast('Bankod kopierad till urklipp!');
+        });
+
+        document.getElementById('importShareCodeBtn').addEventListener('click', () => {
+            try {
+                const raw = document.getElementById('shareCodeTextarea').value.trim();
+                const decoded = JSON.parse(decodeURIComponent(escape(atob(raw))));
+                if (!decoded || !Array.isArray(decoded.obstacles)) throw new Error('Ogiltig kod');
+                decoded.id = 'custom_' + Date.now();
+                openLevelEditor(decoded);
+                document.getElementById('shareModal').classList.add('hidden');
+                showToast(`Laddade "${decoded.name || 'Bana'}"!`);
+            } catch (err) {
+                showToast('Ogiltig bankod – kontrollera att hela koden klistrades in.');
+            }
+        });
+
+        document.getElementById('practiceModeToggle').addEventListener('click', togglePracticeMode);
+        document.getElementById('togglePracticeInPauseBtn').addEventListener('click', () => {
+            togglePracticeMode();
+            showToast(gameState.practiceMode ? 'Övningsläge aktiverat ◆' : 'Övningsläge avstängt');
+        });
+        document.getElementById('removeLastCpPauseBtn').addEventListener('click', () => {
+            removeLastCheckpoint();
+            updatePracticeUI();
+        });
+        document.getElementById('backToEditorPauseBtn').addEventListener('click', () => {
+            openLevelEditor();
+        });
+        document.getElementById('placeCpBtn').addEventListener('click', () => placeCheckpoint(true));
+        document.getElementById('removeCpBtn').addEventListener('click', removeLastCheckpoint);
+
+        document.getElementById('muteToggleBtn').addEventListener('click', () => {
+            sound.setMuted(!sound.muted);
+            saveData.muted = sound.muted;
+            writeSaveData(saveData);
+            buildMenuUI();
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+        document.getElementById('resumeBtn').addEventListener('click', resumeGame);
+        document.getElementById('restartBtn').addEventListener('click', restartFromStart);
+        document.getElementById('menuBtn').addEventListener('click', returnToMenu);
+
+        document.getElementById('victoryReplayBtn').addEventListener('click', () => {
+            document.getElementById('victoryModal').classList.add('hidden');
+            gameState.checkpoints = [];
+            gameState.attempt = 1;
+            resetAttempt();
+        });
+
+        document.getElementById('victoryNextBtn').addEventListener('click', () => {
+            document.getElementById('victoryModal').classList.add('hidden');
+            if (gameState.isCustomTest) {
+                openLevelEditor();
+                return;
+            }
+            if (gameState.activeCustomLevel) {
+                returnToMenu();
+                return;
+            }
+            if (gameState.levelIndex < LEVELS.length - 1) {
+                startLevel(gameState.levelIndex + 1, false);
+            } else {
+                startLevel(0, true);
+            }
+        });
+
+        // Initiera menyer och starta spel-loopen
+        window.onload = function () {
+            buildMenuUI();
+            renderPreviewCube();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
